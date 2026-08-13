@@ -108,6 +108,65 @@ with the verdict attached, and a worker — **not necessarily the same one** —
 claims it and resumes from the checkpointer. That is separation of duties
 already working at the CLI, moved behind HTTP.
 
+## 3.4 Fan-out and fan-in
+
+KYC already wants this: `adjudicate_media` judges N articles and today does them
+in one call because there is no way to say "run this per item". The same shape
+recurs everywhere — screen N subsidiaries, check N counterparties.
+
+**Declared on the step, like everything else:**
+
+```python
+Step(
+    name="adjudicate_media",
+    executor="agent",
+    for_each="candidate_articles",   # fan out over this pool key
+    produces="adverse_media",        # fan in: a list, one entry per item
+    max_parallel=8,
+)
+```
+
+`for_each` names a pool key holding a sequence; the step runs once per item and
+its products are collected back under `produces` **in input order**, so a result
+list is comparable across runs. A hook sees one item, not the list — which keeps
+hooks simple and is what makes the sequential and parallel forms the same code.
+
+### The decisions that matter
+
+**One failed branch must not fail the run.** Judging twelve articles where one
+call times out should yield eleven findings and a recorded failure, not nothing.
+Branch outcomes are collected with their status, mirroring `RunOutcome` at the
+run level — the same reasoning as `DESIGN-RUN-001` §2.2, one level down.
+
+**Fan-out happens inside one claimed run, not across workers.** A branch is not
+a run: it has no independent identity, no decision chain, and no reason to be
+resumable on its own. One worker owns the run and fans out with `asyncio`
+bounded by `max_parallel`. LangGraph's `Send` is the mechanism.
+
+This is the load-bearing interaction with §3.2: a fan-out of 200 items under one
+lease is a run that legitimately takes far longer than a sequential one, so a
+worker executing fan-out **must** renew rather than assume the default lease
+covers it. Getting this wrong reclaims a run mid-fan-out and re-executes every
+branch — the exact double-execution leases exist to prevent, arrived at through
+the feature meant to make things faster.
+
+**No gates inside a fan-out, initially.** A gate per item is a queue of
+decisions, which needs a reviewer UI that can handle a hundred pending items
+from one run and a policy for partial approval. Real, and a separate piece of
+work. A gate *after* fan-in is fine and is what KYC needs — a human reviews the
+collected findings, not each article.
+
+**Nesting is out.** Fan-out inside fan-out multiplies in ways that make
+`max_parallel` meaningless and stack traces unreadable. One level, checked at
+template construction.
+
+### What stays untyped
+
+The items. A fan-out over `candidate_articles` says nothing about what an
+article *is*, and the collected `adverse_media` is a list of whatever the hook
+returned. Fan-out is a topology, not a schema — the edges are still the only
+typed surfaces.
+
 ## 4. What this deliberately is not
 
 **Not a scheduler.** No cron, no backfill, no dependency graph between runs.
@@ -130,11 +189,19 @@ safe.
 
 | | Piece | Unblocks |
 |---|---|---|
-| 1 | `queued` state + `claim_run` on the in-memory store | nothing yet, but everything depends on it |
+| 1 | `queued` state + `claim_run` + leases | ✅ done |
 | 2 | `WorkflowDescriptor` + descriptor store, served by `/workflows` | **KYC appears in the console** |
 | 3 | The worker loop, run as a separate process | **runs actually execute** |
+| 3b | `for_each` / fan-in (§3.4) | parallelism, and the reason lease renewal matters |
 | 4 | `start_workflow` returning a handle | the API in `DESIGN-RUN-001` |
-| 5 | Lease expiry, retries, Postgres store | production |
+| 5 | Retries, Postgres store | production |
+
+**3b can land before or after 3, but not before 1.** Fan-out inside a run that
+cannot renew its lease is worse than no fan-out: it makes runs longer without
+making them safer to reclaim. If fan-out ships first, it ships sequentially —
+`for_each` with `max_parallel=1` is a correct implementation and a useful
+intermediate step, because it settles the collection semantics without the
+concurrency.
 
 Steps 1–3 are the demo-visible ones. Step 5 is where this stops being a POC.
 
