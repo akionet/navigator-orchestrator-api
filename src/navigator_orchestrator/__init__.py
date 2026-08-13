@@ -25,7 +25,7 @@ reach past it.
 """
 
 from navigator_orchestrator.sdk.composition import build_deps
-from navigator_orchestrator.sdk.context import Blocked, Ctx, Document, FileAccess
+from navigator_orchestrator.sdk.context import Blocked, Ctx, Declined, Document, FileAccess
 from navigator_orchestrator.sdk.graph import resume_template_graph, run_template_graph
 from navigator_orchestrator.sdk.judge import Judge, JudgeError, Verdict, load_judges, run_judge
 from navigator_orchestrator.sdk.preflight import Requirement
@@ -35,6 +35,13 @@ from navigator_orchestrator.sdk.registry import (
     implementation,
     known_implementations,
     register_implementation,
+)
+from navigator_orchestrator.sdk.run import (
+    RunOutcome,
+    arun_workflow,
+    ids_from_file,
+    run_batch,
+    run_workflow,
 )
 from navigator_orchestrator.sdk.runner import RunResult, StepFailed, StepRecord, run_template
 from navigator_orchestrator.sdk.schema import (
@@ -62,6 +69,7 @@ __all__ = [
     "Call",
     "CallSpecError",
     "Ctx",
+    "Declined",
     "Document",
     "Executor",
     "FileAccess",
@@ -70,6 +78,7 @@ __all__ = [
     "Project",
     "ProjectError",
     "Requirement",
+    "RunOutcome",
     "RunResult",
     "SchemaContractError",
     "SchemaRef",
@@ -86,7 +95,9 @@ __all__ = [
     "ValidationResult",
     "Verdict",
     "__version__",
+    "arun_workflow",
     "build_deps",
+    "ids_from_file",
     "implementation",
     "known_implementations",
     "load_judges",
@@ -94,9 +105,11 @@ __all__ = [
     "make_schema_snapshot",
     "register_implementation",
     "resume_template_graph",
+    "run_batch",
     "run_judge",
     "run_template",
     "run_template_graph",
+    "run_workflow",
     "schema_fingerprint",
     "validate_instance",
 ]

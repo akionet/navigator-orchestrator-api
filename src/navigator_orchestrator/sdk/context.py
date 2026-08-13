@@ -24,7 +24,24 @@ TEXT_SUFFIXES = (".md", ".txt", ".rst", ".json", ".yaml", ".yml", ".csv")
 
 
 class Blocked(Exception):
-    """A hook refused to let the run continue. Raised by `ctx.require`."""
+    """A hook refused to let the run continue. Raised by `ctx.require`.
+
+    A *fault*: something is wrong and someone has to fix it — a missing field, an
+    unresolvable reference, a precondition that should have held.
+    """
+
+
+class Declined(Blocked):
+    """The rules said no, and that is the correct answer (`DESIGN-RUN-001` §2.3).
+
+    A subclass so existing `except Blocked` handlers keep working, but a distinct
+    type so callers that care can tell the two apart.
+
+    The difference is not pedantry. A sanctions screen declining a client is the
+    control *working*; a missing country on an address is a data error. Collapse
+    them and "declined 40 clients this week" is indistinguishable from "40
+    crashes" to anything watching — you alert on one and not the other.
+    """
 
 
 @dataclass(frozen=True, slots=True)
@@ -157,6 +174,19 @@ class Ctx:
         """
         if not condition:
             raise Blocked(message)
+
+    def decline(self, reason: str) -> None:
+        """End the run because the rules say no — a result, not a fault.
+
+        Use this where the workflow reached a correct negative conclusion: a
+        sanctions hit, an ineligible applicant, a policy refusal. Use `require`
+        where something is genuinely broken and someone must fix it.
+
+        The distinction reaches the caller as `RunOutcome.status` — `declined`
+        rather than `failed` — so a compliance team's ordinary refusals are not
+        counted as crashes by whatever is watching.
+        """
+        raise Declined(reason)
 
     def skip(self, reason: str) -> None:
         """Declare that this step did no work, and why.

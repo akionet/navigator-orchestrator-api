@@ -189,12 +189,15 @@ def _sanctions_check(ctx: Ctx, client: dict[str, Any], client_id: str) -> dict[s
         "individual_listed": individual_hit is not None,
     }
     ctx.note(f"sanctions jurisdiction {country} via {basis}: {result['country_effect']}")
-    ctx.require(
-        result["country_effect"] != "decline" and not result["individual_listed"],
-        f"sanctions screening declines this client: {country} is {result['country_programme']}"
-        if country_hit
-        else f"{client['name']} is a designated person",
-    )
+    # `decline`, not `require`: a sanctions hit is the control working, not a
+    # fault. It reaches the caller as status "declined" rather than "failed", so
+    # a week of ordinary refusals does not read as a week of crashes.
+    if result["country_effect"] == "decline":
+        ctx.decline(
+            f"sanctions screening declines this client: {country} is {result['country_programme']}"
+        )
+    if result["individual_listed"]:
+        ctx.decline(f"{client['name']} is a designated person")
     return result
 
 
