@@ -29,3 +29,9 @@ Thumbs.db
 # Generated build output for buildpack-style deploys.
 # Regenerate with `make requirements` -- never hand-edit, never commit.
 requirements.txt
+
+# Local run history: event logs and the checkpoint database, written by every
+# CLI run inside a workflow project. Without this a demo commits its own output,
+# one file per run, forever -- and a SQLite checkpoint with it. `make clean`
+# removes the same directory.
+.navigator-orchestrator/
