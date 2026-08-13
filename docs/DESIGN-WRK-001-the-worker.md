@@ -141,6 +141,20 @@ arrangement.
 
 ## 7. Status
 
-`proposed`. Nothing implemented. The sequencing in §5 is the order I would take
-it; step 1 is small and self-contained, and step 2 is what makes the difference
-visible in the console.
+`in progress`.
+
+**Step 1 is done.** `RunState` carries `queued`; `RunStore` carries
+`claim_run`, `renew_lease` and `reclaim_expired_leases`. A claim is a lease, and
+`claim_run` reclaims expired ones before claiming, so the queue heals without a
+scheduler and without the worker being asked to notice its own death. Covered by
+`tests/test_run_queue.py`.
+
+**Steps 2 and 3 should land together.** Listing a workflow the runtime cannot
+yet execute gives an operator a console entry that fails on launch, which is
+worse than its absence — a demo where clicking the interesting thing returns
+`501` is harder to explain than one where it is honestly not there.
+
+The open question before starting them is §3.1: `Template.params` is a bare
+tuple of names with no types, so the first descriptor's `input_schema` is
+names-only and thinner than the Pydantic schema `echo` and `approval` publish.
+Either the console tolerates two grades of schema, or param typing lands first.
