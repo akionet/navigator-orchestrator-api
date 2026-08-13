@@ -107,6 +107,58 @@ def test_the_graph_itself_stays_untyped() -> None:
     assert not hasattr(step, "types")
 
 
+# ── the output edge ──────────────────────────────────────────────────────────
+
+
+def test_the_published_key_defaults_to_the_last_step() -> None:
+    """Right often enough to be the default."""
+    assert _template().published_key == "result"
+
+
+def test_a_template_may_name_what_it_publishes() -> None:
+    """Wrong often enough to be worth naming.
+
+    A template ending in a step that *records* something rather than producing
+    the answer would otherwise publish the wrong key.
+    """
+    template = Template(
+        name="sample",
+        publishes="answer",
+        steps=(
+            Step(name="think", executor="agent", produces="answer"),
+            Step(name="log_it", executor="local", produces="written"),
+        ),
+    )
+    assert template.published_key == "answer"
+
+
+def test_a_template_with_no_steps_publishes_nothing() -> None:
+    assert Template(name="empty", steps=()).published_key == ""
+
+
+def test_the_result_schema_is_a_ref_not_an_inline_schema() -> None:
+    """The manifest already owns runtime contracts.
+
+    A second place to put one is a second place to forget to update.
+    """
+    template = Template(
+        name="sample",
+        steps=(Step(name="only", executor="local", produces="result"),),
+        result_schema="onboarding-outcome",
+    )
+    assert template.result_schema == "onboarding-outcome"
+    assert isinstance(template.result_schema, str)
+
+
+def test_declaring_an_output_shape_is_optional() -> None:
+    """A workflow publishing free-form output stays valid.
+
+    Requiring a result schema would push structure onto workflows whose answer
+    genuinely is prose, which is the belly problem wearing an edge's clothes.
+    """
+    assert _template().result_schema == ""
+
+
 def test_params_are_the_only_typed_surface_on_a_template() -> None:
     template = _template(Param("client_id"))
     assert hasattr(template, "input_schema")

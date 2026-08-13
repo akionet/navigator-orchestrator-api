@@ -200,6 +200,17 @@ class Template:
     #: Environment variables the run cannot finish without, checked before the
     #: first step (SPEC-NSP-003 §5.1). Names, or `Requirement(name, why)`.
     requires: tuple[Any, ...] = ()
+    #: The pool key holding the run's published result — the **output edge**.
+    #: Empty falls back to the last step's `produces`, which is right often
+    #: enough to be the default and wrong often enough to be worth naming.
+    publishes: str = ""
+    #: A schema ref from `[schemas.*]` in the project manifest, describing the
+    #: published record so a console can render a table rather than a JSON dump.
+    #:
+    #: A *ref*, not an inline schema: the manifest already owns runtime
+    #: contracts, and a second place to put one is a second place to forget.
+    #: Optional — a workflow that publishes free-form output stays valid.
+    result_schema: str = ""
 
     def __post_init__(self) -> None:
         seen: set[str] = set()
@@ -210,6 +221,18 @@ class Template:
 
     def hook_names(self) -> tuple[str, ...]:
         return tuple(step.name for step in self.steps)
+
+    @property
+    def published_key(self) -> str:
+        """Which pool key is the run's result.
+
+        `publishes` when the template says so, otherwise the last step's
+        product. Naming it matters once a template ends in a step that records
+        something rather than producing the answer.
+        """
+        if self.publishes:
+            return self.publishes
+        return self.steps[-1].produces if self.steps else ""
 
     @property
     def param_specs(self) -> tuple[Param, ...]:

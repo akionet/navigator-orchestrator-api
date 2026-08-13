@@ -119,7 +119,7 @@ async def arun_workflow(
         result.run_id,
         workflow,
         params,
-        output=result.pool.get(template.steps[-1].produces) if template.steps else None,
+        output=result.pool.get(template.published_key) if template.published_key else None,
     )
 
 

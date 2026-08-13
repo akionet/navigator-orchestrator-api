@@ -75,6 +75,19 @@ watching. `ctx.decline()` now separates them.
 
 A batch keeps going through both: one decline does not stop the rest.
 
+**The workflow declares both its edges**, which is what lets a console render it
+without knowing anything about KYC:
+
+```python
+params=(Param("client_id", doc="Client to screen"),)   # input: a form, not a text box
+publishes="outcome"                                     # which pool key is the result
+result_schema="onboarding-outcome"                      # its shape, in schemas/
+```
+
+Everything between the steps stays untyped. Rigid structure between agentic
+nodes is self-defeating — the useful outputs are often the ones no schema
+anticipated — so the schemas sit at the edges and nowhere else.
+
 See [`DESIGN-RUN-001`](DESIGN-RUN-001-embedding-a-run.md) for the reasoning, and
 why `start_workflow` is deliberately absent until the worker exists.
 

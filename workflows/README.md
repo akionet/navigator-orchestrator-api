@@ -24,6 +24,33 @@ directory to find the manifest, the way `git` finds `.git`.
 
 Adding a judge means adding a file. That is the whole extension model.
 
+## Schemas at the edges, free text inside
+
+A workflow has exactly two typed surfaces, and they are both edges:
+
+```python
+Template(
+    name="kyc-onboarding",
+    params=(Param("client_id", doc="Client to screen"),),   # input edge
+    publishes="outcome",                                     # which key is the result
+    result_schema="onboarding-outcome",                      # its shape, from [schemas.*]
+    steps=(...),
+)
+```
+
+`params` is what an operator types to launch a run, so typing it lets a console
+render a form and catches a typo before anything executes. `publishes` and
+`result_schema` describe the record that comes out, so a console can render a
+table rather than a JSON dump. Both are optional; a bare string in `params` is
+shorthand for a required string.
+
+**Everything between the steps stays untyped, and should.** The pool keys one
+step hands the next are `Any`. Rigid structure between agentic nodes is
+self-defeating: the useful outputs are frequently the ones no schema
+anticipated. `tests/test_param_schema.py` fails the build if a schema field ever
+appears on the general step contract, so this is enforced rather than
+remembered.
+
 ## The three kinds of thing in a definition
 
 **1. Declarative steps** — the default. A step names a generic engine executor

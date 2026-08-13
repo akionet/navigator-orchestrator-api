@@ -290,6 +290,9 @@ kyc_onboarding = Template(
     # This is the workflow's input *edge*; everything the steps hand each other
     # afterwards stays untyped, and should.
     params=(Param("client_id", doc="Client to screen — see data/clients.json"),),
+    # The output edge: which pool key is the result, and its declared shape.
+    publishes="outcome",
+    result_schema="onboarding-outcome",
     steps=(
         Step(
             name="load_client",

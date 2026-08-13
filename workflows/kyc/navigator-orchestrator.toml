@@ -9,7 +9,17 @@
 # examples. Copy this directory, change the paths and backends, and you have your
 # own workflow — see ../README.md.
 
+# The published result's shape, so a console can render a table rather than a
+# JSON dump. This is the output *edge* — nothing that flows between the steps is
+# described here, and nothing should be.
+[schemas.onboarding-outcome]
+backend = "local"
+method  = "POST"
+path    = "schemas/onboarding-outcome.json"
+source  = "file"
+
 [paths]
+schemas   = "schemas"    # runtime contracts at the edges
 flows     = "flows"      # workflow definitions: what runs, in what order
 # judges  = "judges"     # single-hop compliance gates, if the project needs any
 prompts   = "prompts"    # versioned prompt text (this example inlines its prompts)
