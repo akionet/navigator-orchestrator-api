@@ -56,28 +56,59 @@ uv run --project ../.. python demo_python.py CL-0004
 
 Resuming across processes is the CLI's job — see below.
 
+> **Known rough edge.** `demo_python.py` hardcodes its parameter names and is
+> more verbose than it should be. It is kept as a worked example of the public
+> API, not as the interface. A proper `run_workflow(name, **params)` helper —
+> taking a workflow name rather than a file path, and accepting one id, a list
+> or a file — belongs in the SDK and is not written yet. Until it is, batching
+> lives in the Makefile (`make batch`) rather than in Python.
+
 ---
 
 ## 2. CLI — the operator's path, step by step
+
+The CLI is general; the project's `Makefile` names the verbs *this* workflow
+has, so you type `make queue` rather than a flow path and a run id copied out
+of earlier output. Start here:
+
+```bash
+make help
+```
+```
+check     Validate the workflow file without running anything
+screen    Screen one client: make screen client=CL-0001
+batch     Screen several: make batch clients="CL-0001 CL-0004" | file=ids.txt
+queue     What is waiting for a human decision
+runs      Every run, most recent last
+show      The durable payload a reviewer sees: make show run=<id>
+approve   Approve a paused run: make approve run=<id> [why="..."]
+reject    Reject a paused run: make reject run=<id> [why="..."]
+revise    Send back for revision: make revise run=<id> [why="..."]
+clean     Discard local run history
+```
+
+Copy that file into your own workflow project and rename the verbs — it is the
+cheapest part of the whole design to change.
 
 **Validate before running.** Checks the workflow file against the template
 without executing anything:
 
 ```bash
-navigator-orchestrator check flows/kyc.py
+make check
 # ok — kyc.py is a valid 'kyc-onboarding' workflow in kyc/
+# ... then the step list, so you can see what will run
 ```
 
-**Run the clean case** — completes in one command:
+**Screen the clean case** — completes in one command:
 
 ```bash
-navigator-orchestrator run flows/kyc.py --client_id CL-0001
+make screen client=CL-0001
 ```
 
-**Run a PEP** — stops for a human:
+**Screen a PEP** — stops for a human:
 
 ```bash
-navigator-orchestrator run flows/kyc.py --client_id CL-0004
+make screen client=CL-0004
 ```
 ```
 PAUSED at 'pep_gate' — waiting for a human decision.
@@ -91,29 +122,58 @@ resume with one of:
 **See what is waiting**, without reading logs:
 
 ```bash
-navigator-orchestrator runs                     # the queue
-navigator-orchestrator show <run-id>            # the durable gate payload
+make queue                    # only runs awaiting a human
+make runs                     # everything
+make show run=<id>            # the durable gate payload
 ```
 
 **Decide** — this can be a different person, in a different shell, after a
 reboot. The payload is on disk, not in the first process's memory:
 
 ```bash
-navigator-orchestrator decide flows/kyc.py <run-id> --approve --comment "cleared: no adverse findings"
+make approve run=<id> why="cleared: no adverse findings"
+make reject  run=<id> why="insufficient provenance"
+make revise  run=<id> why="need the art historian's report"
 ```
 
 The outcome carries the decision with actor, comment and timestamp.
 
+**Screen several at once** — a list, or a file with one id per line:
+
+```bash
+make batch clients="CL-0001 CL-0004 CL-0005"
+make batch file=ids.example.txt
+```
+
+A batch keeps going when a client is declined, so one rejection does not stop
+the rest. Each still pauses individually if its gate is material — `make queue`
+afterwards shows what needs a human.
+
 **The two that prove the rules:**
 
 ```bash
-navigator-orchestrator run flows/kyc.py --client_id CL-0007
+make screen client=CL-0007
 # error: client CL-0007 has no country on its address; country-scoped
 #        sanctions screening cannot be performed
 
-navigator-orchestrator run flows/kyc.py --client_id CL-0008
+make screen client=CL-0008
 # ... error: sanctions screening declines this client: IR is COMPREHENSIVE
 ```
+
+<details>
+<summary>The underlying CLI, if you would rather not use make</summary>
+
+```bash
+navigator-orchestrator check  flows/kyc.py
+navigator-orchestrator run    flows/kyc.py --client_id CL-0001
+navigator-orchestrator runs
+navigator-orchestrator show   <run-id>
+navigator-orchestrator decide flows/kyc.py <run-id> --approve --comment "cleared"
+```
+
+`NAVIGATOR_MODEL=fake:local` is exported by the Makefile; set it yourself if you
+call the CLI directly, or the runtime falls back to whatever `.env` says.
+</details>
 
 `CL-0008` is worth narrating: his residency is Cyprus and unremarkable, but he
 holds 74.5% of a shipper operating in Iran. Check residency first and he passes.
@@ -163,6 +223,32 @@ be wrong in a real system.
 
 ## Resetting
 
-Run history is in-memory per process, and CLI runs are on disk under the project.
-`navigator-orchestrator runs` lists them; deleting the runs directory clears the
-slate if the queue gets noisy mid-demo.
+CLI runs are written to disk under the project, so the queue accumulates across
+a demo. `make runs` lists them and `make clean` clears the slate if it gets
+noisy mid-presentation.
+
+The API runtime's history is separate and in-memory: restarting the server
+discards it. Both facts are worth stating out loud rather than being caught by.
+
+## Gates only stop when they matter
+
+Every gate used to stop every run, so a reviewer confirmed several times a day
+that someone was *not* a politically exposed person. A control people learn to
+click through is worse than no control — the one real match arrives looking
+exactly like the noise.
+
+Gates now declare a condition: `pep_gate` fires on `pep.is_pep`, `art_gate` on
+`eligibility.has_art`. A skipped gate is still a **recorded decision**, not an
+absence:
+
+```
+'pep_gate': {'verdict': 'not_required', 'reason': 'pep.is_pep is not set for this run'}
+```
+
+"No human was asked, and here is why" is a different fact from "this workflow
+has no gate", and an audit trail that cannot tell them apart is not one.
+
+It **fails closed**: a condition naming a path no step produced — a typo, a
+renamed output, a deleted step — pauses rather than skips. Silently dropping a
+compliance control and leaving a clean record behind it is the worst available
+failure mode.
