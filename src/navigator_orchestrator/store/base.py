@@ -7,6 +7,7 @@ only holds in one of them is not a guarantee.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import Any, Protocol
 
 from navigator_orchestrator.store.models import (
@@ -80,6 +81,18 @@ class RunStore(Protocol):
         ...
 
     async def decisions_for(self, run_id: str) -> list[DecisionRecord]: ...
+
+    async def claim_run(self, worker: str, workflows: Sequence[str] = ()) -> RunRecord | None:
+        """Atomically take one `queued` run (`DESIGN-WRK-001` §3.2).
+
+        The one operation a queue needs that a run store does not: two workers
+        polling the same store must never claim the same run. `None` means
+        nothing is waiting, which is the ordinary case rather than an error.
+
+        An empty `workflows` claims anything queued; a worker that can only load
+        some projects passes the names it can actually execute.
+        """
+        ...
 
     async def expire_runs(self, older_than_days: int) -> int:
         """Move abandoned `awaiting_decision` runs to `cancelled` (§5.3).

@@ -21,7 +21,10 @@ __all__ = [
     "Verdict",
 ]
 
-RunState = Literal["running", "awaiting_decision", "completed", "failed", "cancelled"]
+#: `queued` is the worker's entry point (`DESIGN-WRK-001` §3.2): the API creates
+#: a run it cannot execute, and a worker claims it. It is first in the list
+#: because it is first in the lifecycle.
+RunState = Literal["queued", "running", "awaiting_decision", "completed", "failed", "cancelled"]
 Verdict = Literal["approve", "reject", "amend"]
 
 #: States from which a run will never move on its own.

@@ -8,6 +8,7 @@ concurrency tests mean the same thing against either implementation.
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from typing import Any
@@ -85,6 +86,38 @@ class InMemoryRunStore:
             )
             self._runs[run_id] = updated
             return updated
+
+    async def claim_run(self, worker: str, workflows: Sequence[str] = ()) -> RunRecord | None:
+        """Atomically take one `queued` run for `worker` (`DESIGN-WRK-001` §3.2).
+
+        Returns `None` when there is nothing to do, which is the ordinary case
+        for a polling worker and not an error.
+
+        The whole point is that it is atomic: two workers polling the same store
+        must never take the same run. Here that is the existing lock; in
+        Postgres it is `SELECT … FOR UPDATE SKIP LOCKED`. Anything weaker
+        double-executes side effects the first time two workers are running,
+        which is exactly when nobody is watching closely.
+
+        An empty `workflows` claims any queued run. A worker that can only load
+        some projects passes the names it can actually execute.
+        """
+        async with self._lock:
+            queued = [
+                run
+                for run in self._runs.values()
+                if run.state == "queued" and (not workflows or run.workflow in workflows)
+            ]
+            if not queued:
+                return None
+            # Oldest first: a queue that serves newest-first starves the runs
+            # that have already waited longest.
+            queued.sort(key=lambda r: (r.created_at, r.id))
+            claimed = queued[0].model_copy(
+                update={"state": "running", "updated_at": datetime.now(UTC)}
+            )
+            self._runs[claimed.id] = claimed
+            return claimed
 
     async def append_decision(
         self,
