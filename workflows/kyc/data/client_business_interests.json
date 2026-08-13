@@ -1,0 +1,84 @@
+[
+  {
+    "client_id": "CL-0001",
+    "interests": []
+  },
+  {
+    "client_id": "CL-0002",
+    "interests": [
+      {
+        "business_name": "Kestrel Holdings AG",
+        "stake_pct": 62.0,
+        "controlling_stake": true,
+        "country_of_operations": "DE",
+        "sector": "Real estate development"
+      }
+    ]
+  },
+  {
+    "client_id": "CL-0003",
+    "interests": [
+      {
+        "business_name": "Raghunathan Legal Partnerschaft",
+        "stake_pct": 50.0,
+        "controlling_stake": true,
+        "country_of_operations": "DE",
+        "sector": "Legal services"
+      }
+    ]
+  },
+  {
+    "client_id": "CL-0004",
+    "interests": [
+      {
+        "business_name": "Steppe Infrastructure LLP",
+        "stake_pct": 18.0,
+        "controlling_stake": false,
+        "country_of_operations": "KZ",
+        "sector": "Civil engineering",
+        "_fixture_note": "18% is below the 25% controlling threshold, so jurisdiction falls through to legal residency (KZ)."
+      }
+    ]
+  },
+  {
+    "client_id": "CL-0005",
+    "interests": [
+      {
+        "business_name": "Marchetti Arte SRL",
+        "stake_pct": 100.0,
+        "controlling_stake": true,
+        "country_of_operations": "IT",
+        "sector": "Art dealing"
+      }
+    ]
+  },
+  {
+    "client_id": "CL-0006",
+    "interests": []
+  },
+  {
+    "client_id": "CL-0007",
+    "interests": [
+      {
+        "business_name": "Gulf Freight Solutions FZE",
+        "stake_pct": 40.0,
+        "controlling_stake": true,
+        "country_of_operations": "AE",
+        "sector": "Freight forwarding"
+      }
+    ]
+  },
+  {
+    "client_id": "CL-0008",
+    "interests": [
+      {
+        "business_name": "Caspian Maritime Logistics OOO",
+        "stake_pct": 74.5,
+        "controlling_stake": true,
+        "country_of_operations": "IR",
+        "sector": "Shipping",
+        "_fixture_note": "Controlling stake in a business operating in a comprehensively sanctioned country. Jurisdiction must resolve to IR (business), NOT CY (residency) — this is the fixture that proves rule ordering in DESIGN 3.1. Expect decline."
+      }
+    ]
+  }
+]

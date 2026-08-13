@@ -1,0 +1,67 @@
+target-version = "py312"
+line-length = 100
+src = ["src", "tests", "features"]
+
+# Ruff formats Python code blocks inside Markdown. Specs are human contracts
+# and `prompts/**` is versioned prompt *data* — neither may be rewritten by a
+# formatter, so Markdown is out of scope entirely.
+extend-exclude = ["*.md"]
+
+[lint]
+select = [
+    "E", "W",    # pycodestyle
+    "F",         # pyflakes
+    "I",         # isort
+    "B",         # bugbear
+    "UP",        # pyupgrade
+    "ASYNC",     # async correctness
+    "S",         # bandit
+    "T20",       # no print
+    "RET", "SIM", "TID", "PL", "RUF",
+]
+ignore = [
+    "PLR0913",  # explicit dependency injection means wide-ish constructors
+    "S101",     # asserts are the point in tests
+]
+
+[lint.per-file-ignores]
+# Test/BDD code may touch privates and assert on literals. PLR0917 is off
+# because a test's parameter list is pytest's fixture list, not an API.
+"tests/**" = ["SLF001", "PLR2004", "TID251", "PLR0917"]
+"features/**" = ["SLF001", "PLR2004", "TID251", "PLR0917"]
+"conftest.py" = ["SLF001"]
+# The CLI writes to a terminal (T20) and is a composition root, so it may build
+# a client (TID251) — the same exemption `api/` has, for the same reason.
+"src/navigator_orchestrator/sdk/cli.py" = ["T20", "TID251"]
+# `sdk/composition.py` IS the composition root, extracted so a workflow
+# project has a supported way to build a client without the ban being
+# weakened where it matters most.
+"src/navigator_orchestrator/sdk/composition.py" = ["TID251"]
+# An operator-facing script in a workflow project: it writes to a terminal
+# and that is the whole point of it.
+"editorial/eval_judge.py" = ["T20"]
+# Workflow files are authored by users, to a documented convention. They are
+# shipped as executable documentation, not as library code.
+"examples/**" = ["T20", "PLR2004"]
+# TID251 bans client construction outside the composition root. The engine and
+# the API layer *are* that root, so the ban bites only in `workflows/`.
+"src/navigator_orchestrator/engine/**" = ["TID251"]
+"src/navigator_orchestrator/api/**" = ["TID251"]
+"src/navigator_orchestrator/config.py" = ["TID251"]
+
+[lint.flake8-tidy-imports]
+# Absolute imports only — a node's dependencies should be obvious from the
+# import line, not relative to where the file happens to sit.
+ban-relative-imports = "all"
+
+[lint.flake8-tidy-imports.banned-api]
+# Complements the AST purity check (AC-3): a node that imports a client
+# factory is doing something only the composition root may do.
+"navigator_orchestrator.engine.llm.make_client".msg = "Nodes use the injected deps.llm; only the composition root builds clients."
+"navigator_orchestrator.engine.cache.RedisCache".msg = "Nodes use the injected deps.cache."
+
+[lint.isort]
+known-first-party = ["navigator_orchestrator"]
+
+[format]
+quote-style = "double"

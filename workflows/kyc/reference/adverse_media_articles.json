@@ -1,0 +1,66 @@
+[
+  {
+    "article_id": "AM-0001",
+    "outlet": "Hamburger Wirtschaftsblatt",
+    "published": "2025-03-14",
+    "headline": "Prosecutors open investigation into Hafenweg development financing",
+    "summary": "State prosecutors in Hamburg have opened a formal investigation into the financing of the Hafenweg residential development. Marcus Feldhoff, the majority owner of Kestrel Holdings AG, is alleged to have presented inflated pre-sale figures to three regional lenders in order to secure a further tranche of construction credit. Feldhoff denies the allegation through his lawyers. Kestrel Holdings AG said it is cooperating fully.",
+    "_fixture_note": "Marcus Feldhoff = principal. Adverse and implicating."
+  },
+  {
+    "article_id": "AM-0002",
+    "outlet": "Frankfurter Rechtsanzeiger",
+    "published": "2025-04-02",
+    "headline": "Defence team named in Hafenweg financing case",
+    "summary": "Priya Raghunathan of Raghunathan Legal Partnerschaft has been instructed as lead defence counsel for Marcus Feldhoff in the Hafenweg financing investigation. Raghunathan previously acted in the Rheinland procurement matter. The prosecution is led by senior state attorney Katrin Blum. A preliminary hearing is expected before the end of the year.",
+    "_fixture_note": "THE FALSE-POSITIVE TEST. Priya Raghunathan appears in an adverse article but is representative, not implicated. Naive name-matching flags her; the adjudicator must not."
+  },
+  {
+    "article_id": "AM-0003",
+    "outlet": "Berliner Tagesspiegel",
+    "published": "2025-01-20",
+    "headline": "Software executive endows university scholarship fund",
+    "summary": "Tobias Krenz has endowed a scholarship fund at the Technical University of Berlin covering tuition for twelve engineering students annually. Krenz, who sold his logistics software firm in 2023, said the fund would prioritise applicants from vocational backgrounds.",
+    "_fixture_note": "Neutral article. Not adverse at all. Guards against 'named in the corpus = flagged'."
+  },
+  {
+    "article_id": "AM-0004",
+    "outlet": "Financial Chronicle",
+    "published": "2024-11-08",
+    "headline": "Shipping group accused of falsifying cargo manifests",
+    "summary": "Caspian Maritime Logistics OOO has been accused by two European port authorities of falsifying cargo manifests to disguise the origin of refined petroleum products. The company is controlled by Viktor Aslanov. Investigators allege the manifests were altered to route shipments through intermediary ports. Aslanov did not respond to requests for comment.",
+    "_fixture_note": "Viktor Aslanov = principal, via a controlled business. Adverse and implicating."
+  },
+  {
+    "article_id": "AM-0005",
+    "outlet": "Corriere Economico",
+    "published": "2025-06-30",
+    "headline": "Milan gallery sets record for post-war Italian sale",
+    "summary": "Marchetti Arte SRL, owned by Elena Marchetti, achieved a record price for a post-war Italian work at auction this week. Marchetti said the result reflected renewed institutional interest in the period.",
+    "_fixture_note": "Neutral. Elena Marchetti's flag should come from the art gate, not from media."
+  },
+  {
+    "article_id": "AM-0006",
+    "outlet": "Nordsee Kurier",
+    "published": "2023-09-17",
+    "headline": "Fisherman rescued after trawler runs aground",
+    "summary": "A crew member identified as Marcus Feldhoff, 24, was rescued by lifeboat crews after the trawler Nordlicht ran aground off Cuxhaven in heavy weather. All four crew were recovered without serious injury.",
+    "_fixture_note": "NAMESAKE TEST. Same name, plainly a different person (age, occupation, context), and the article is not adverse anyway."
+  },
+  {
+    "article_id": "AM-0007",
+    "outlet": "Almaty Business Review",
+    "published": "2025-02-11",
+    "headline": "Transport ministry awards civil engineering framework",
+    "summary": "The transport ministry has awarded a five-year civil engineering framework to a consortium including Steppe Infrastructure LLP. Deputy transport minister Dmitri Sokolov announced the award at a press briefing. Opposition deputies have questioned the speed of the procurement process but no formal complaint has been lodged.",
+    "_fixture_note": "Borderline. Procurement questions raised but no allegation of wrongdoing against Sokolov. Expect adverse=false or role=unclear routing to a human — NOT an automatic implication."
+  },
+  {
+    "article_id": "AM-0008",
+    "outlet": "Financial Chronicle",
+    "published": "2025-05-22",
+    "headline": "Port authority auditor describes manifest discrepancies",
+    "summary": "Auditor Helena Brandt told a parliamentary committee that manifest discrepancies at two northern ports were systematic rather than clerical. Brandt's review examined shipments handled by several operators including Caspian Maritime Logistics OOO. She made no findings against individuals.",
+    "_fixture_note": "Helena Brandt = investigator. Adverse subject matter, but she is not implicated."
+  }
+]

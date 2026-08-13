@@ -1,0 +1,37 @@
+{
+  "_synthetic": "Fabricated for testing. Not derived from any real PEP register.",
+  "source_list": "SYNTHETIC-PEP-REGISTER",
+  "last_updated": "2026-01-15",
+  "entries": [
+    {
+      "name": "Dmitri Sokolov",
+      "country": "KZ",
+      "position": "Deputy Minister of Transport",
+      "category": "domestic_pep",
+      "since": "2022-04-01",
+      "_fixture_note": "The PEP gate case. A match is not a rejection — it routes to a compliance officer."
+    },
+    {
+      "name": "Helena Brandt",
+      "country": "DE",
+      "position": "Federal port authority auditor",
+      "category": "domestic_pep",
+      "since": "2021-09-01",
+      "_fixture_note": "Present so the PEP list is not trivially one row, and to show a PEP who is an investigator rather than a subject of concern."
+    },
+    {
+      "name": "Amara Oyelaran",
+      "country": "NG",
+      "position": "Regional governor",
+      "category": "foreign_pep",
+      "since": "2023-05-29"
+    },
+    {
+      "name": "Jean-Paul Mercier",
+      "country": "FR",
+      "position": "Senator",
+      "category": "foreign_pep",
+      "since": "2020-10-01"
+    }
+  ]
+}

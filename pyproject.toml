@@ -1,0 +1,108 @@
+[project]
+name = "navigator-orchestrator-api"
+version = "0.1.0"
+description = "Model-agnostic AI workflow engine (R0 core engine spine)"
+readme = "README.md"
+requires-python = ">=3.12"
+license = { file = "LICENSE" }
+authors = [{ name = "navigator" }]
+
+# Runtime spine only. Providers and infra drivers are extras so the hermetic
+# test path (FakeClient + in-memory cache) installs nothing it does not use.
+dependencies = [
+    "langgraph>=0.2.60",
+    "langchain-core>=0.3.0",
+    # `init_chat_model` — provider adapters live behind it, in the extras below.
+    "langchain>=1.0",
+    "pydantic>=2.7",
+    "pydantic-settings>=2.3",
+    "fastapi>=0.115",
+    "sse-starlette>=2.1",
+    "redis>=5.0",
+    "opentelemetry-api>=1.25",
+    "opentelemetry-sdk>=1.25",
+    "httpx>=0.27",
+    "pyyaml>=6.0",
+    # SPEC-NSP-007: runtime write contracts remain JSON Schema all the way
+    # through validation; Pydantic models describe only navigator-orchestrator envelopes.
+    "jsonschema[format-nongpl]>=4.23",
+    # SPEC-NSP-003 §2.2 — the CLI default checkpointer. Durable, no server.
+    # Postgres stays an extra, for deployments that want it.
+    "langgraph-checkpoint-sqlite>=2.0",
+]
+
+[project.scripts]
+# The client surface. `check` and `run` at P0/P1; `decide` and `runs` from P3/P5.
+navigator-orchestrator = "navigator_orchestrator.sdk.cli:main"
+
+[project.optional-dependencies]
+# LangChain provider adapters. One per `PROVIDER_ALIASES` entry in engine/llm.py.
+vertex = ["langchain-google-vertexai>=2.0"]   # Gemini on Vertex — UAT
+bedrock = ["langchain-aws>=0.2"]              # Claude on Bedrock — golive
+anthropic = ["langchain-anthropic>=0.3"]
+postgres = ["psycopg[binary,pool]>=3.2", "langgraph-checkpoint-postgres>=2.0"]
+langfuse = ["langfuse>=2.50"]
+server = ["uvicorn>=0.30"]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.2",
+    "pytest-asyncio>=0.23",
+    "pytest-bdd>=7.2",
+    "ruff>=0.6",
+    "mypy>=1.11",
+    "types-pyyaml>=6.0",
+    "types-jsonschema>=4.23",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/navigator_orchestrator"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests", "features"]
+asyncio_mode = "auto"
+bdd_features_base_dir = "features"
+markers = [
+    "live: hits a real model provider; skipped unless LIVE_LLM=true",
+    # Traceability tags (SPEC-AIP-002 §2). Registered so `-m` selection works
+    # and so an unregistered-marker warning flags a typo'd tag.
+    "SPEC-AIP-002: R0 core engine spine",
+    "F-AIP-R0-01: workflow runs end-to-end and streams",
+    "F-AIP-R0-02: model swap needs no node change",
+    "F-AIP-R0-03: node purity is enforced",
+    "F-AIP-R0-04: prompts are boot-validated",
+    "F-AIP-R0-05: traces and cost metering",
+    "F-AIP-R0-06: idempotent response cache",
+    "F-AIP-R0-07: health endpoint",
+    "SPEC-AIP-003: R1 durable runs + HITL resume",
+    "F-AIP-R1-01: a paused run emits interrupt, not error",
+    "F-AIP-R1-02: runs are durable and listable by state",
+    "F-AIP-R1-03: a different actor in a different process resumes a run",
+    "F-AIP-R1-04: decisions are append-only with actor and verdict",
+    "F-AIP-R1-05: a real principal is required for a decision",
+    "F-AIP-R1-06: resume is idempotent and rejects double-decisions",
+    "SPEC-NSP-001: R2 functional workflow interface",
+    "F-NSP-R2-01: hooks resolve by name; definition order is irrelevant",
+    "F-NSP-R2-02: hooks bind by parameter name over a superset",
+    "F-NSP-R2-03: a new kwarg does not break an existing file",
+    "F-NSP-R2-04: an unknown hook or parameter fails check with a suggestion",
+    "F-NSP-R2-10: doc-qa completes with no connector configured",
+    "SPEC-NSP-007: runtime output contracts",
+    "F-NSP-R2-11: runtime schema synchronization and locking",
+    "F-NSP-R2-12: runtime schema validation",
+    "F-NSP-R2-13: provider structured output",
+    "F-NSP-R2-14: durable manual workflow mode",
+    "F-NSP-R2-15: stateless component workbench",
+    "F-NSP-R2-16: the downstream product localhost record trial",
+    "SPEC-WFB-002: React-admin operator console",
+    "F-WFB-R2-01: discover and start a generic registered workflow",
+    "F-WFB-R2-02: view exact registered YAML source read-only",
+    "F-WFB-R2-03: watch live execution and inspect its safe log",
+    "F-WFB-R2-04: reload and inspect server-owned run history",
+    "F-WFB-R2-05: decide and resume an opaque paused run",
+]
+filterwarnings = ["error::DeprecationWarning:navigator_orchestrator.*"]

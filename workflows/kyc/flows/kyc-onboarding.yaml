@@ -1,0 +1,201 @@
+# KYC client onboarding — the reference workflow (DESIGN-KYC-001).
+#
+# Shape note: this is written against the engine's Template/Step model (named
+# steps, `produces` into a shared pool, judges attached declaratively, gates as
+# run states). It is a design artefact staged ahead of the code copy and has NOT
+# yet been validated against `sdk/loader.py`. Expect field-name drift on first
+# load; the structure is the part being proposed here.
+#
+# No secrets. No provider ids inline — models resolve from environment with a
+# safe default, and every backend URL is an env lookup.
+
+name: kyc-onboarding
+version: 1
+doc: Screen a prospective client and assign an eligibility tier.
+
+params:
+  - client_id
+
+# ---------------------------------------------------------------------------
+# 1. Load and validate. Nothing screens until we know the jurisdiction.
+# ---------------------------------------------------------------------------
+steps:
+  - id: load_client
+    executor: data
+    source: data/clients.json
+    key: client_id
+    produces: client
+
+  - id: validate_jurisdiction
+    executor: validate
+    produces: jurisdiction_ok
+    # A missing country is an error, not a pass. Fixture CL-0007 exercises this.
+    rules:
+      - assert: client.address_detail.country
+        else_error: jurisdiction_unknown
+        message: >-
+          client {client_id} has no country on its address; country-scoped
+          sanctions screening cannot be performed
+
+  # -------------------------------------------------------------------------
+  # 2. Adverse media — two agents, deliberately separate. See DESIGN §1.
+  # -------------------------------------------------------------------------
+  - id: extract_entities
+    executor: agent
+    agent: adverse-media-entities
+    # Wide, shallow pass over the whole corpus. Cheap model.
+    inputs:
+      - corpus: reference/adverse_media_articles.json
+    produces: mentions          # [{name, kind, article_ids}]
+
+  - id: match_subject
+    executor: filter
+    # Deterministic narrowing: only articles naming the subject or a business
+    # they hold a stake in reach the expensive adjudicator.
+    inputs: [mentions, client, business_interests]
+    produces: candidate_articles
+
+  - id: adjudicate_media
+    executor: agent
+    agent: adverse-media-adjudicator
+    inputs:
+      - candidate_articles
+      - subject: client.name
+    produces: adverse_media_findings   # [{article_id, adverse, role, implicates_subject, rationale}]
+
+  # -------------------------------------------------------------------------
+  # 3. PEP — deterministic lookup, then a human decision if it hits.
+  # -------------------------------------------------------------------------
+  - id: pep_check
+    executor: lookup
+    source: reference/pep_list.json
+    match: [client.name, client.address_detail.country]
+    produces: pep_result
+
+  - id: pep_gate
+    executor: gate
+    when: pep_result.is_pep
+    # A PEP match is not a rejection. It is a decision a compliance officer owns.
+    payload:
+      - pep_result.matched_name
+      - pep_result.position
+      - pep_result.country
+      - pep_result.source_list
+      - adverse_media_findings
+    verdicts: [approve, reject, amend]
+    produces: pep_decision
+    on_reject: decline
+
+  # -------------------------------------------------------------------------
+  # 4. Sanctions. Ordered before eligibility: a hit ends the case.
+  # -------------------------------------------------------------------------
+  - id: load_business_interests
+    executor: data
+    source: data/client_business_interests.json
+    key: client_id
+    produces: business_interests
+
+  - id: resolve_sanctions_jurisdiction
+    executor: rules
+    inputs: [client, business_interests, assets]
+    produces: sanctions_country
+    # Stated rule, applied in order (DESIGN §3.1).
+    rules:
+      - when: business_interests.controlling_stake            # >= 25%
+        then: business_interests.country_of_operations
+      - when: assets.tier_hint in ["hnwi", "uhnwi"]
+        then: client.address_detail.country_of_legal_residency
+      - else_error: sanctions_jurisdiction_unresolved
+
+  - id: country_sanctions_check
+    executor: lookup
+    source: reference/sanctioned_countries.json
+    match: [sanctions_country]
+    produces: country_sanctions_result
+    on_hit: decline
+
+  - id: individual_sanctions_check
+    executor: lookup
+    source: reference/sanctioned_individuals.json
+    match: [client.name, client.address_detail.country]
+    produces: individual_sanctions_result
+    on_hit: decline
+
+  # -------------------------------------------------------------------------
+  # 5. Eligibility — pure arithmetic over thresholds. No agent.
+  # -------------------------------------------------------------------------
+  - id: load_financials
+    executor: data
+    source: data/client_financials.json
+    key: client_id
+    produces: financials
+
+  - id: load_assets
+    executor: data
+    source: data/client_assets.json
+    key: client_id
+    produces: assets
+
+  - id: compute_eligibility
+    executor: rules
+    inputs: [client, financials, assets]
+    produces: eligibility
+    # Thresholds are data, not prose, so a change is reviewable as a diff.
+    tiers:
+      premium:
+        currency: EUR
+        # Residency is a gate; the financial test is any-of. See DESIGN §3.2 —
+        # this reading is FLAGGED and needs confirmation.
+        require_all:
+          - client.address_detail.country == "DE"
+          - client.address_detail.right_to_reside == true
+        require_any:
+          - financials.annual_income_eur >= 120000
+          - financials.savings_eur >= 100000
+      private_banking_hnwi:
+        currency: EUR
+        # Art and crypto excluded outright at this tier.
+        qualifying_assets: [investable, liquid]
+        excluded_asset_classes: [art, crypto]
+        minimum: 2000000
+      private_banking_uhnwi:
+        currency: EUR
+        qualifying_assets: [investable, liquid, art, crypto]
+        minimum: 10000000
+        # Art + crypto combined may not exceed half the portfolio; the excess is
+        # excluded and the tier recomputed on the reduced figure.
+        constraints:
+          - max_share:
+              classes: [art, crypto]
+              of_total: 0.50
+              on_breach: exclude_excess_and_recompute
+
+  - id: art_provenance_gate
+    executor: gate
+    when: assets.has_art
+    # Any art at all, at any tier. The attestation is the audit record.
+    payload:
+      - assets.art_items
+      - eligibility.proposed_tier
+    attestations:
+      - reviewed_by_art_historian
+      - full_provenance_established
+      - no_theft_or_forgery_claim
+    require_all_attestations: true
+    verdicts: [approve, reject, amend]
+    produces: art_decision
+    on_reject: downgrade_tier
+
+  - id: emit_outcome
+    executor: assemble
+    inputs:
+      - client
+      - adverse_media_findings
+      - pep_result
+      - pep_decision
+      - country_sanctions_result
+      - individual_sanctions_result
+      - eligibility
+      - art_decision
+    produces: onboarding_outcome
+    schema: schemas/onboarding-outcome.json

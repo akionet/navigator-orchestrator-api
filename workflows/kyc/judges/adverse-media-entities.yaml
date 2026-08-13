@@ -1,0 +1,52 @@
+id: adverse-media-entities
+version: 1
+title: Which people and businesses are named, and where?
+# Extraction is wide and shallow — a small model does this well and cheaply.
+model: ${NAV_ENTITY_MODEL:-anthropic:claude-haiku-4-5-20251001}
+
+applies_to:
+  - kyc-onboarding
+before: [match_subject]
+
+inputs:
+  - corpus
+
+on_fail: block
+temperature: 0
+
+prompt: |
+  You index a corpus of news summaries. For every article you are given, list
+  the proper names it contains and nothing else.
+
+  ## What counts
+
+  - **people** — full personal names as written ("Marcus Feldhoff").
+  - **businesses** — companies, funds, banks, partnerships ("Kestrel Holdings
+    AG"). Include the legal suffix when the article gives one.
+
+  ## What does not
+
+  Do not list countries, cities, regulators, courts, newspapers, or job titles.
+  Do not list a person by title alone ("the finance minister") — only by name.
+
+  ## You make no judgement here
+
+  You are not deciding whether anyone did anything wrong, whether an article is
+  negative, or whether a name matters. A later step does that, and it needs an
+  unfiltered index to work from. An extractor that quietly drops names it thinks
+  are innocent destroys the only complete record of who appears where.
+
+  Return every name you find, once per article, with the article id.
+
+  ## Output
+
+  ```json
+  [
+    {"name": "Marcus Feldhoff", "kind": "person", "article_ids": ["AM-0001", "AM-0004"]},
+    {"name": "Kestrel Holdings AG", "kind": "business", "article_ids": ["AM-0004"]}
+  ]
+  ```
+
+  Merge duplicates: one entry per distinct name, with every article id it
+  appears in. Preserve the spelling the article uses; do not normalise or
+  translate names.

@@ -1,0 +1,71 @@
+[
+  {
+    "client_id": "CL-0001",
+    "currency": "EUR",
+    "tier_hint": "retail",
+    "holdings": { "investable": 85000, "liquid": 40000, "art": 0, "crypto": 0 },
+    "has_art": false,
+    "art_items": []
+  },
+  {
+    "client_id": "CL-0002",
+    "currency": "EUR",
+    "tier_hint": "hnwi",
+    "holdings": { "investable": 3100000, "liquid": 450000, "art": 0, "crypto": 120000 },
+    "has_art": false,
+    "art_items": []
+  },
+  {
+    "client_id": "CL-0003",
+    "currency": "EUR",
+    "tier_hint": "retail",
+    "holdings": { "investable": 210000, "liquid": 95000, "art": 0, "crypto": 0 },
+    "has_art": false,
+    "art_items": []
+  },
+  {
+    "client_id": "CL-0004",
+    "currency": "EUR",
+    "tier_hint": "hnwi",
+    "holdings": { "investable": 2600000, "liquid": 300000, "art": 0, "crypto": 0 },
+    "has_art": false,
+    "art_items": []
+  },
+  {
+    "client_id": "CL-0005",
+    "currency": "EUR",
+    "tier_hint": "uhnwi",
+    "_fixture_note": "art+crypto = 7,400,000 of 12,600,000 total = 58.7% — breaches the 50% cap. Excess must be excluded and the tier recomputed on 12,600,000 - 1,100,000 = 11,500,000, which still clears 10,000,000. Also triggers art_provenance_gate.",
+    "holdings": { "investable": 4200000, "liquid": 1000000, "art": 6500000, "crypto": 900000 },
+    "has_art": true,
+    "art_items": [
+      { "item_id": "ART-001", "title": "Untitled (Blue Field)", "artist": "M. Hoerner", "valuation_eur": 4100000, "acquired": "2019-06-11" },
+      { "item_id": "ART-002", "title": "Study of a Harbour", "artist": "L. Petrucci", "valuation_eur": 2400000, "acquired": "2022-02-28" }
+    ]
+  },
+  {
+    "client_id": "CL-0006",
+    "currency": "EUR",
+    "tier_hint": "hnwi",
+    "_fixture_note": "2,400,000 qualifying (investable+liquid), no art, crypto excluded at this tier — clean private_banking_hnwi pass.",
+    "holdings": { "investable": 2100000, "liquid": 300000, "art": 0, "crypto": 380000 },
+    "has_art": false,
+    "art_items": []
+  },
+  {
+    "client_id": "CL-0007",
+    "currency": "EUR",
+    "tier_hint": "hnwi",
+    "holdings": { "investable": 5400000, "liquid": 700000, "art": 0, "crypto": 0 },
+    "has_art": false,
+    "art_items": []
+  },
+  {
+    "client_id": "CL-0008",
+    "currency": "EUR",
+    "tier_hint": "uhnwi",
+    "holdings": { "investable": 14000000, "liquid": 2200000, "art": 0, "crypto": 1500000 },
+    "has_art": false,
+    "art_items": []
+  }
+]

@@ -1,0 +1,110 @@
+name: ci
+
+# Green CI is the R0 release gate (PLAN-AIP-R0-001 §3). The pipeline is
+# hermetic: no job may reach a model provider. `LIVE_LLM` is never set here.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHONUNBUFFERED: "1"
+
+jobs:
+  quality:
+    name: lint · typecheck · test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    # Redis and Postgres back the AC-6 cache and the checkpointer smoke. The
+    # same assertions run locally against the in-memory backends, so a
+    # developer without Docker is not blocked.
+    services:
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: nav
+          POSTGRES_PASSWORD: nav
+          POSTGRES_DB: navigator_orchestrator
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Set up Python 3.12
+        run: uv python install 3.12
+
+      - name: Install dependencies
+        run: uv sync --group dev --extra postgres
+
+      - name: Lint
+        run: |
+          uv run ruff check .
+          uv run ruff format --check .
+
+      - name: Typecheck
+        run: uv run mypy
+
+      - name: Test (unit + BDD)
+        env:
+          NAVIGATOR_REDIS_URL: redis://localhost:6379/0
+          NAVIGATOR_DATABASE_URL: postgresql://nav:nav@localhost:5432/navigator_orchestrator
+        run: uv run pytest -q --junitxml=junit.xml
+
+      - name: Publish test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: junit
+          path: junit.xml
+          if-no-files-found: warn
+
+  traceability:
+    name: spec traceability
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      # Every acceptance criterion in SPEC-AIP-002 §2 must have a tagged
+      # scenario. A renamed feature-id fails here rather than silently
+      # dropping coverage.
+      - name: Every AC has a tagged scenario
+        run: |
+          set -euo pipefail
+          missing=0
+          check() {
+            if ! grep -rq "@$1" features/; then
+              echo "::error::no scenario tagged @$1"
+              missing=1
+            fi
+          }
+          # R0 — core engine spine (SPEC-AIP-002)
+          for id in 01 02 03 04 05 06 07; do check "F-AIP-R0-$id"; done
+          # R1 — durable runs + HITL resume (SPEC-AIP-003)
+          for id in 01 02 03 04 05 06; do check "F-AIP-R1-$id"; done
+          exit $missing

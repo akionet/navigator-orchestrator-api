@@ -1,0 +1,52 @@
+[
+  {
+    "client_id": "CL-0001",
+    "currency": "EUR",
+    "annual_income_eur": 135000,
+    "savings_eur": 62000,
+    "_fixture_note": "income clears 120k, savings do not clear 100k — any-of is satisfied, and DE residency gate passes. Expect premium."
+  },
+  {
+    "client_id": "CL-0002",
+    "currency": "EUR",
+    "annual_income_eur": 410000,
+    "savings_eur": 260000
+  },
+  {
+    "client_id": "CL-0003",
+    "currency": "EUR",
+    "annual_income_eur": 118000,
+    "savings_eur": 104000,
+    "_fixture_note": "income just under 120k, savings just over 100k — the any-of branch is what carries this one. Guards against an AND misreading."
+  },
+  {
+    "client_id": "CL-0004",
+    "currency": "EUR",
+    "annual_income_eur": 96000,
+    "savings_eur": 88000
+  },
+  {
+    "client_id": "CL-0005",
+    "currency": "EUR",
+    "annual_income_eur": 540000,
+    "savings_eur": 1200000
+  },
+  {
+    "client_id": "CL-0006",
+    "currency": "EUR",
+    "annual_income_eur": 295000,
+    "savings_eur": 180000
+  },
+  {
+    "client_id": "CL-0007",
+    "currency": "EUR",
+    "annual_income_eur": 220000,
+    "savings_eur": 150000
+  },
+  {
+    "client_id": "CL-0008",
+    "currency": "EUR",
+    "annual_income_eur": 780000,
+    "savings_eur": 900000
+  }
+]

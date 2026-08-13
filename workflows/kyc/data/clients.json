@@ -1,0 +1,122 @@
+[
+  {
+    "client_id": "CL-0001",
+    "relationship_manager_id": "RM-014",
+    "name": "Anneliese Vogt",
+    "email": "a.vogt@example.de",
+    "profession": "Orthopaedic surgeon",
+    "address_detail": {
+      "line1": "Gartenstrasse 18",
+      "city": "Munich",
+      "postcode": "80333",
+      "country": "DE",
+      "country_of_legal_residency": "DE",
+      "right_to_reside": true
+    }
+  },
+  {
+    "client_id": "CL-0002",
+    "relationship_manager_id": "RM-014",
+    "name": "Marcus Feldhoff",
+    "email": "m.feldhoff@example.de",
+    "profession": "Property developer",
+    "address_detail": {
+      "line1": "Hafenweg 7",
+      "city": "Hamburg",
+      "postcode": "20457",
+      "country": "DE",
+      "country_of_legal_residency": "DE",
+      "right_to_reside": true
+    }
+  },
+  {
+    "client_id": "CL-0003",
+    "relationship_manager_id": "RM-022",
+    "name": "Priya Raghunathan",
+    "email": "p.raghunathan@example.com",
+    "profession": "Defence solicitor",
+    "address_detail": {
+      "line1": "Kaiserstrasse 44",
+      "city": "Frankfurt",
+      "postcode": "60329",
+      "country": "DE",
+      "country_of_legal_residency": "DE",
+      "right_to_reside": true
+    }
+  },
+  {
+    "client_id": "CL-0004",
+    "relationship_manager_id": "RM-031",
+    "name": "Dmitri Sokolov",
+    "email": "d.sokolov@example.com",
+    "profession": "Deputy transport minister",
+    "address_detail": {
+      "line1": "Ulitsa Lesnaya 12",
+      "city": "Almaty",
+      "postcode": "050000",
+      "country": "KZ",
+      "country_of_legal_residency": "KZ",
+      "right_to_reside": true
+    }
+  },
+  {
+    "client_id": "CL-0005",
+    "relationship_manager_id": "RM-031",
+    "name": "Elena Marchetti",
+    "email": "e.marchetti@example.it",
+    "profession": "Gallery owner",
+    "address_detail": {
+      "line1": "Via Manzoni 5",
+      "city": "Milan",
+      "postcode": "20121",
+      "country": "IT",
+      "country_of_legal_residency": "IT",
+      "right_to_reside": true
+    }
+  },
+  {
+    "client_id": "CL-0006",
+    "relationship_manager_id": "RM-014",
+    "name": "Tobias Krenz",
+    "email": "t.krenz@example.de",
+    "profession": "Software executive",
+    "address_detail": {
+      "line1": "Rosenthaler Strasse 91",
+      "city": "Berlin",
+      "postcode": "10119",
+      "country": "DE",
+      "country_of_legal_residency": "DE",
+      "right_to_reside": true
+    }
+  },
+  {
+    "client_id": "CL-0007",
+    "relationship_manager_id": "RM-022",
+    "name": "Farida Nasser",
+    "email": "f.nasser@example.com",
+    "profession": "Logistics director",
+    "address_detail": {
+      "line1": "Al Wasl Road 220",
+      "city": "Dubai",
+      "postcode": "00000",
+      "country_of_legal_residency": "AE",
+      "right_to_reside": true,
+      "_fixture_note": "country is deliberately absent — must raise jurisdiction_unknown, never pass"
+    }
+  },
+  {
+    "client_id": "CL-0008",
+    "relationship_manager_id": "RM-031",
+    "name": "Viktor Aslanov",
+    "email": "v.aslanov@example.com",
+    "profession": "Shipping company director",
+    "address_detail": {
+      "line1": "Kotelnicheskaya 3",
+      "city": "Limassol",
+      "postcode": "3016",
+      "country": "CY",
+      "country_of_legal_residency": "CY",
+      "right_to_reside": true
+    }
+  }
+]

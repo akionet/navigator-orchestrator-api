@@ -1,0 +1,41 @@
+default_language_version:
+  python: python3.12
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: check-yaml
+      - id: check-toml
+      - id: check-merge-conflict
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+      - id: mixed-line-ending
+        args: [--fix=lf]
+      # Secrets belong in the environment, never in the repo.
+      - id: detect-private-key
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.16.1
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
+
+  - repo: local
+    hooks:
+      - id: mypy
+        name: mypy --strict
+        entry: uv run mypy
+        language: system
+        pass_filenames: false
+        types: [python]
+
+      # AC-3: a node that builds a client at import time or mutates state in
+      # place never reaches CI.
+      - id: node-purity
+        name: node purity (SPEC-AIP-002 AC-3)
+        entry: uv run pytest tests/test_purity.py -q
+        language: system
+        pass_filenames: false
+        files: ^src/navigator_orchestrator/workflows/

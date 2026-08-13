@@ -1,0 +1,53 @@
+{
+  "_synthetic": "Fabricated for testing. Shaped like a country-programme list but NOT the real OFAC programme set. A deployment must ingest the authoritative list; that is an ingestion concern, not a workflow one.",
+  "source_list": "SYNTHETIC-COUNTRY-PROGRAMMES",
+  "last_updated": "2026-01-15",
+  "programmes": [
+    {
+      "country": "IR",
+      "country_name": "Iran",
+      "programme": "COMPREHENSIVE",
+      "scope": "comprehensive",
+      "effect": "decline",
+      "_fixture_note": "CL-0008's controlling business operates here. Expect decline via business jurisdiction, not residency."
+    },
+    {
+      "country": "KP",
+      "country_name": "Korea, Democratic People's Republic of",
+      "programme": "COMPREHENSIVE",
+      "scope": "comprehensive",
+      "effect": "decline"
+    },
+    {
+      "country": "SY",
+      "country_name": "Syria",
+      "programme": "COMPREHENSIVE",
+      "scope": "comprehensive",
+      "effect": "decline"
+    },
+    {
+      "country": "CU",
+      "country_name": "Cuba",
+      "programme": "COMPREHENSIVE",
+      "scope": "comprehensive",
+      "effect": "decline"
+    },
+    {
+      "country": "RU",
+      "country_name": "Russian Federation",
+      "programme": "SECTORAL",
+      "scope": "sectoral",
+      "sectors": ["energy", "defence", "financial_services"],
+      "effect": "review",
+      "_fixture_note": "Sectoral rather than comprehensive — presence alone is not a decline, so a sector check is required. Shows that 'sanctioned country' is not a single boolean."
+    },
+    {
+      "country": "BY",
+      "country_name": "Belarus",
+      "programme": "SECTORAL",
+      "scope": "sectoral",
+      "sectors": ["defence", "potash", "financial_services"],
+      "effect": "review"
+    }
+  ]
+}
