@@ -20,6 +20,7 @@ from pathlib import Path
 from typing import Any
 
 from navigator_orchestrator.sdk.context import Ctx
+from navigator_orchestrator.sdk.registry import register_implementation
 from navigator_orchestrator.sdk.templates import Param, Step, Template
 
 __all__ = ["ENTITY_PROMPT", "VERDICT_PROMPT", "kyc_onboarding"]
@@ -399,3 +400,26 @@ kyc_onboarding = Template(
 
 def register(registry: Any) -> None:
     registry.register(kyc_onboarding)
+
+
+# ── the functional interface a document names ────────────────────────────────
+#
+# The same functions the template above uses as `default=`, published under
+# `namespace.verb` names so `kyc_onboarding.yaml` can reference them with
+# `uses:`. One implementation, two ways to wire it — which is the point: moving
+# orchestration into a document must not fork the behaviour.
+#
+# Registration happens on import, and the project loader imports Python
+# templates before parsing documents, so these exist by the time a document is
+# read.
+for _name, _fn in {
+    "kyc.load_client": _load_client,
+    "kyc.validate_jurisdiction": _validate_jurisdiction,
+    "kyc.extract_entities": _extract_entities,
+    "kyc.adjudicate_media": _adjudicate_media,
+    "kyc.pep_check": _pep_check,
+    "kyc.sanctions_check": _sanctions_check,
+    "kyc.compute_eligibility": _compute_eligibility,
+    "kyc.emit_outcome": _emit_outcome,
+}.items():
+    register_implementation(_name, _fn)

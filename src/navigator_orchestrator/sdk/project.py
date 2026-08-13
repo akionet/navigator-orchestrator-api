@@ -136,12 +136,25 @@ def load_project_templates(project: Project, registry: Any) -> list[str]:
         return []
 
     registered: list[str] = []
+    # Python first, deliberately: a document's `uses` names must already be
+    # registered when it is parsed, and registration happens on import.
     for path in sorted(directory.glob("*.py")):
         if path.name.startswith("_"):
             continue
         for template in _templates_in(path):
             registry.register(template)
             registered.append(template.name)
+
+    from navigator_orchestrator.sdk.document import template_from_file  # noqa: PLC0415
+
+    for path in sorted(
+        p for pattern in ("*.yaml", "*.yml", "*.json") for p in directory.glob(pattern)
+    ):
+        if path.name.startswith("_"):
+            continue
+        template = template_from_file(path)
+        registry.register(template)
+        registered.append(template.name)
     return registered
 
 

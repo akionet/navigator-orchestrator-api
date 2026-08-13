@@ -1,0 +1,125 @@
+# The KYC pipeline, as a document.
+#
+# Same workflow as `kyc_onboarding.py`, wired through `uses:` instead of
+# `default=`. Registered under a distinct name so both forms coexist: the
+# Python template proves the behaviour, this proves the behaviour survives
+# being externalised.
+#
+# Orchestration lives here; behaviour stays in Python. A change to the order of
+# steps, or to which gate is material, is a diff to this file.
+
+name: kyc-onboarding-doc
+doc: Screen a prospective client and assign an eligibility tier.
+
+# ── the input edge ───────────────────────────────────────────────────────────
+# A bare string is shorthand for a required string, exactly as in Python.
+params:
+  - name: client_id
+    type: string
+    required: true
+    doc: Client to screen — see data/clients.json
+
+# ── the output edge ──────────────────────────────────────────────────────────
+publishes: outcome
+result_schema: onboarding-outcome
+
+prompt_refs:
+  - kyc-entities@1
+  - kyc-adjudicate@1
+
+# ── the pipeline ─────────────────────────────────────────────────────────────
+# `uses` is the functional interface: it names an implementation registered in
+# Python with @implementation("kyc.load_client"). This is what makes a step
+# expressible as data — the field exists in `Step` today for exactly this
+# reason, and its docstring says so.
+#
+# A workflow `.py` file may still override any step by defining a function with
+# the step's name, so the override mechanism is unchanged.
+steps:
+  - name: load_client
+    executor: local
+    produces: client
+    kwargs: [client_id]
+    uses: kyc.load_client
+    summary_keys: [client_id, name]
+    doc: fetch the client's identity record
+
+  - name: validate_jurisdiction
+    executor: local
+    produces: jurisdiction
+    kwargs: [client]
+    uses: kyc.validate_jurisdiction
+    doc: a missing country blocks the run rather than passing it
+
+  - name: extract_entities
+    executor: agent
+    produces: mentions
+    kwargs: [client]
+    uses: kyc.extract_entities
+    doc: index proper names across the article corpus; no judgement
+
+  - name: adjudicate_media
+    executor: agent
+    produces: adverse_media
+    kwargs: [client, mentions]
+    uses: kyc.adjudicate_media
+    doc: is it adverse, and is the subject implicated or merely present?
+    # When fan-out lands (DESIGN-WRK-001 §3.4) this gains:
+    #   for_each: candidate_articles
+    #   max_parallel: 8
+
+  - name: pep_check
+    executor: local
+    produces: pep
+    kwargs: [client]
+    uses: kyc.pep_check
+    summary_keys: [is_pep]
+    doc: exact lookup against the PEP register
+
+  # A gate needs no `uses` — the engine implements it. `kwargs` is what the
+  # reviewer is shown, and `when` decides whether the gate is material at all.
+  - name: pep_gate
+    executor: gate
+    produces: pep_decision
+    when: pep.is_pep
+    kwargs: [client, pep, adverse_media]
+    doc: a PEP match is a decision a compliance officer owns, not a rejection
+
+  - name: sanctions_check
+    executor: local
+    produces: sanctions
+    kwargs: [client, client_id]
+    uses: kyc.sanctions_check
+    summary_keys: [country, basis]
+    doc: resolve the relevant jurisdiction, then screen country and individual
+
+  - name: compute_eligibility
+    executor: local
+    produces: eligibility
+    kwargs: [client, client_id]
+    uses: kyc.compute_eligibility
+    summary_keys: [tier]
+    doc: threshold arithmetic over income, savings and assets
+
+  - name: art_gate
+    executor: gate
+    produces: art_decision
+    when: eligibility.has_art
+    kwargs: [client, eligibility]
+    doc: art needs an attestation — historian review, provenance, no theft claim
+
+  - name: emit_outcome
+    executor: local
+    produces: outcome
+    kwargs:
+      - client
+      - adverse_media
+      - pep
+      - sanctions
+      - eligibility
+      - pep_decision
+      - art_decision
+    uses: kyc.emit_outcome
+    summary_keys: [client_id, tier]
+    doc: assemble the onboarding record
+
