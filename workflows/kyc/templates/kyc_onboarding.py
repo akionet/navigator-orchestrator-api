@@ -20,7 +20,7 @@ from pathlib import Path
 from typing import Any
 
 from navigator_orchestrator.sdk.context import Ctx
-from navigator_orchestrator.sdk.templates import Step, Template
+from navigator_orchestrator.sdk.templates import Param, Step, Template
 
 __all__ = ["ENTITY_PROMPT", "VERDICT_PROMPT", "kyc_onboarding"]
 
@@ -286,7 +286,10 @@ kyc_onboarding = Template(
     name="kyc-onboarding",
     doc="Screen a prospective client and assign an eligibility tier.",
     prompt_refs=(ENTITY_PROMPT, VERDICT_PROMPT),
-    params=("client_id",),
+    # Typed so the console can render a launch form rather than a free-text box.
+    # This is the workflow's input *edge*; everything the steps hand each other
+    # afterwards stays untyped, and should.
+    params=(Param("client_id", doc="Client to screen — see data/clients.json"),),
     steps=(
         Step(
             name="load_client",
