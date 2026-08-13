@@ -82,15 +82,43 @@ class RunStore(Protocol):
 
     async def decisions_for(self, run_id: str) -> list[DecisionRecord]: ...
 
-    async def claim_run(self, worker: str, workflows: Sequence[str] = ()) -> RunRecord | None:
-        """Atomically take one `queued` run (`DESIGN-WRK-001` §3.2).
+    async def claim_run(
+        self,
+        worker: str,
+        workflows: Sequence[str] = (),
+        lease_seconds: float = 300.0,
+    ) -> RunRecord | None:
+        """Atomically lease one `queued` run (`DESIGN-WRK-001` §3.2).
 
         The one operation a queue needs that a run store does not: two workers
         polling the same store must never claim the same run. `None` means
         nothing is waiting, which is the ordinary case rather than an error.
 
+        A claim is a **lease**, not a transfer. Implementations reclaim expired
+        leases here, so recovery from a dead worker is the store's job and not
+        the worker's — a process that was killed cannot run its own cleanup.
+
         An empty `workflows` claims anything queued; a worker that can only load
         some projects passes the names it can actually execute.
+        """
+        ...
+
+    async def renew_lease(
+        self, run_id: str, worker: str, lease_seconds: float = 300.0
+    ) -> RunRecord:
+        """Extend a lease this worker still holds, for legitimately long work.
+
+        Refuses if the lease was already reclaimed and reissued: two workers
+        believing they hold the same run is what leases prevent, and a renewal
+        that resurrected a lost claim would reintroduce it.
+        """
+        ...
+
+    async def reclaim_expired_leases(self) -> int:
+        """Return runs whose lease lapsed to `queued`, and say how many.
+
+        Implementations call this from `claim_run`, so the queue heals without a
+        scheduler. Exposed so an operator can ask what a crash stranded.
         """
         ...
 

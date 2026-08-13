@@ -65,6 +65,12 @@ class RunRecord(BaseModel):
     #: the reviewer UI renders it, we never interpret it.
     gate_payload: dict[str, Any] | None = None
     created_by: Principal | None = None
+    #: Which worker holds this run, and until when (`DESIGN-WRK-001` §4).
+    #: A claim is a *lease*, not a transfer: a worker that dies mid-run stops
+    #: renewing and the run returns to the queue on its own. The worker is not
+    #: asked to notice its own death.
+    leased_by: str | None = None
+    lease_expires_at: datetime | None = None
     created_at: datetime = Field(default_factory=_now)
     updated_at: datetime = Field(default_factory=_now)
 
