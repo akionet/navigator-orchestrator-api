@@ -1,7 +1,7 @@
 # KYC demo cheatsheet
 
-Three ways to run the reference workflow. **Two of them work today** — the third
-is honest about what is missing.
+Four ways to run the reference workflow. **Three of them work today** — the
+fourth is honest about what is missing.
 
 Assumes [`setup.md`](setup.md) is done. Everything below is offline and costs
 nothing: confirm with `curl -s localhost:8000/healthz | jq .engine.model` →
@@ -211,7 +211,85 @@ The rules are **ordered**, and the fixture exists to keep them that way.
 
 ---
 
-## 3. GUI — not available for this workflow
+## 3. YAML — the pipeline as a versioned document
+
+The same workflow, declared in `templates/kyc_onboarding.yaml` instead of Python:
+
+```bash
+make screen client=CL-0001 FLOW=flows/kyc_doc.py
+# or directly:
+navigator-orchestrator run flows/kyc_doc.py --client_id CL-0001
+```
+
+It registers as **`kyc-onboarding-doc`**, deliberately distinct, so both forms
+coexist. Every mode above works against either — including batches:
+
+```bash
+# several clients, CLI
+make batch clients="CL-0001 CL-0004 CL-0008" FLOW=flows/kyc_doc.py
+
+# several clients, Python
+uv run --project ../.. python -c "
+from navigator_orchestrator import outcomes_by_status, run_batch
+outs = run_batch('kyc-onboarding-doc',
+                 [{'client_id': c} for c in ('CL-0001', 'CL-0004', 'CL-0008')])
+for o in outs:
+    print(o.params['client_id'], o.status, o.reason or (o.gate or {}).get('step', ''))
+print({k: len(v) for k, v in outcomes_by_status(outs).items()})
+"
+```
+
+```
+CL-0001 completed
+CL-0004 paused pep_gate
+CL-0008 declined sanctions screening declines this client: IR is COMPREHENSIVE
+{'completed': 1, 'paused': 1, 'declined': 1}
+```
+
+One decline does not stop the rest, and each client still pauses individually if
+its gate is material.
+
+### What moved, and what did not
+
+```yaml
+- name: pep_gate
+  executor: gate
+  produces: pep_decision
+  when: pep.is_pep                 # the condition, reviewable as a diff
+  kwargs: [client, pep, adverse_media]
+
+- name: sanctions_check
+  executor: local
+  produces: sanctions
+  uses: kyc.sanctions_check        # the functional interface
+  kwargs: [client, client_id]
+```
+
+**Orchestration moved; behaviour did not.** `uses:` names a function registered
+in Python with `register_implementation`, so what a step *does* stays where it
+can be tested, while what runs — and in what order, and which gate is material —
+becomes a document. A gate needs no `uses`: the engine implements it.
+
+That is what makes a workflow storable, versionable and diffable, and it is the
+precondition for holding definitions in Postgres rather than in a release. See
+[`DESIGN-ARCH-001`](DESIGN-ARCH-001-runtime-vs-single-graph.md) §4 for what that
+does and does not decouple.
+
+### Two things worth knowing
+
+**An unregistered `uses` fails at load**, naming what *is* registered — not at
+step seven, by which point work has happened and possibly a human has decided.
+Unknown keys are refused rather than ignored.
+
+**Equivalence is tested, not assumed.** `tests/test_document_equivalence.py`
+runs the same pipeline declared both ways and asserts identical status, reason,
+published record, gate and input schema across completed, paused, declined and
+failed. A document that agreed on completions but diverged on declines would be
+the worst version of this.
+
+JSON works too — same document model.
+
+## 4. GUI — not available for this workflow
 
 The console at `navigator-orchestrator-app` will show `echo` and `approval`. It
 will **not** show `kyc-onboarding`, and no amount of frontend work changes that.
