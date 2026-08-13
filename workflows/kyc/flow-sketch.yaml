@@ -1,201 +1,154 @@
-# KYC client onboarding — the reference workflow (DESIGN-KYC-001).
+# TARGET SHAPE for a YAML-defined workflow — not yet loadable.
 #
-# Shape note: this is written against the engine's Template/Step model (named
-# steps, `produces` into a shared pool, judges attached declaratively, gates as
-# run states). It is a design artefact staged ahead of the code copy and has NOT
-# yet been validated against `sdk/loader.py`. Expect field-name drift on first
-# load; the structure is the part being proposed here.
+# The parser does not exist. This file is the specification for it, written
+# against the *real* `Step` and `Template` contracts rather than invented ones,
+# so building the loader is a parser and not a redesign. (The previous version
+# of this file used five executors that do not exist; this one does not.)
 #
-# No secrets. No provider ids inline — models resolve from environment with a
-# safe default, and every backend URL is an env lookup.
+# What changes when this lands: `templates/kyc_onboarding.py` stops declaring the
+# pipeline and keeps only the functions. Orchestration moves here; behaviour
+# stays in Python. They are different jobs and this separates them.
+#
+#   templates/kyc_onboarding.py       this file
+#   ────────────────────────────      ─────────────────────────
+#   what each step *does*             what runs, in what order
+#   registered under a `uses` name    which function each step uses
+#   ordinary Python, ordinary tests   reviewable as a diff
 
 name: kyc-onboarding
-version: 1
 doc: Screen a prospective client and assign an eligibility tier.
 
+# ── the input edge ───────────────────────────────────────────────────────────
+# A bare string is shorthand for a required string, exactly as in Python.
 params:
-  - client_id
+  - name: client_id
+    type: string
+    required: true
+    doc: Client to screen — see data/clients.json
 
-# ---------------------------------------------------------------------------
-# 1. Load and validate. Nothing screens until we know the jurisdiction.
-# ---------------------------------------------------------------------------
+# ── the output edge ──────────────────────────────────────────────────────────
+publishes: outcome
+result_schema: onboarding-outcome
+
+prompt_refs:
+  - kyc-entities@1
+  - kyc-adjudicate@1
+
+# ── the pipeline ─────────────────────────────────────────────────────────────
+# `uses` is the functional interface: it names an implementation registered in
+# Python with @implementation("kyc.load_client"). This is what makes a step
+# expressible as data — the field exists in `Step` today for exactly this
+# reason, and its docstring says so.
+#
+# A workflow `.py` file may still override any step by defining a function with
+# the step's name, so the override mechanism is unchanged.
 steps:
-  - id: load_client
-    executor: data
-    source: data/clients.json
-    key: client_id
+  - name: load_client
+    executor: local
     produces: client
+    kwargs: [client_id]
+    uses: kyc.load_client
+    summary_keys: [client_id, name]
+    doc: fetch the client's identity record
 
-  - id: validate_jurisdiction
-    executor: validate
-    produces: jurisdiction_ok
-    # A missing country is an error, not a pass. Fixture CL-0007 exercises this.
-    rules:
-      - assert: client.address_detail.country
-        else_error: jurisdiction_unknown
-        message: >-
-          client {client_id} has no country on its address; country-scoped
-          sanctions screening cannot be performed
+  - name: validate_jurisdiction
+    executor: local
+    produces: jurisdiction
+    kwargs: [client]
+    uses: kyc.validate_jurisdiction
+    doc: a missing country blocks the run rather than passing it
 
-  # -------------------------------------------------------------------------
-  # 2. Adverse media — two agents, deliberately separate. See DESIGN §1.
-  # -------------------------------------------------------------------------
-  - id: extract_entities
+  - name: extract_entities
     executor: agent
-    agent: adverse-media-entities
-    # Wide, shallow pass over the whole corpus. Cheap model.
-    inputs:
-      - corpus: reference/adverse_media_articles.json
-    produces: mentions          # [{name, kind, article_ids}]
+    produces: mentions
+    kwargs: [client]
+    uses: kyc.extract_entities
+    doc: index proper names across the article corpus; no judgement
 
-  - id: match_subject
-    executor: filter
-    # Deterministic narrowing: only articles naming the subject or a business
-    # they hold a stake in reach the expensive adjudicator.
-    inputs: [mentions, client, business_interests]
-    produces: candidate_articles
-
-  - id: adjudicate_media
+  - name: adjudicate_media
     executor: agent
-    agent: adverse-media-adjudicator
-    inputs:
-      - candidate_articles
-      - subject: client.name
-    produces: adverse_media_findings   # [{article_id, adverse, role, implicates_subject, rationale}]
+    produces: adverse_media
+    kwargs: [client, mentions]
+    uses: kyc.adjudicate_media
+    doc: is it adverse, and is the subject implicated or merely present?
+    # When fan-out lands (DESIGN-WRK-001 §3.4) this gains:
+    #   for_each: candidate_articles
+    #   max_parallel: 8
 
-  # -------------------------------------------------------------------------
-  # 3. PEP — deterministic lookup, then a human decision if it hits.
-  # -------------------------------------------------------------------------
-  - id: pep_check
-    executor: lookup
-    source: reference/pep_list.json
-    match: [client.name, client.address_detail.country]
-    produces: pep_result
+  - name: pep_check
+    executor: local
+    produces: pep
+    kwargs: [client]
+    uses: kyc.pep_check
+    summary_keys: [is_pep]
+    doc: exact lookup against the PEP register
 
-  - id: pep_gate
+  # A gate needs no `uses` — the engine implements it. `kwargs` is what the
+  # reviewer is shown, and `when` decides whether the gate is material at all.
+  - name: pep_gate
     executor: gate
-    when: pep_result.is_pep
-    # A PEP match is not a rejection. It is a decision a compliance officer owns.
-    payload:
-      - pep_result.matched_name
-      - pep_result.position
-      - pep_result.country
-      - pep_result.source_list
-      - adverse_media_findings
-    verdicts: [approve, reject, amend]
     produces: pep_decision
-    on_reject: decline
+    when: pep.is_pep
+    kwargs: [client, pep, adverse_media]
+    doc: a PEP match is a decision a compliance officer owns, not a rejection
 
-  # -------------------------------------------------------------------------
-  # 4. Sanctions. Ordered before eligibility: a hit ends the case.
-  # -------------------------------------------------------------------------
-  - id: load_business_interests
-    executor: data
-    source: data/client_business_interests.json
-    key: client_id
-    produces: business_interests
+  - name: sanctions_check
+    executor: local
+    produces: sanctions
+    kwargs: [client, client_id]
+    uses: kyc.sanctions_check
+    summary_keys: [country, basis]
+    doc: resolve the relevant jurisdiction, then screen country and individual
 
-  - id: resolve_sanctions_jurisdiction
-    executor: rules
-    inputs: [client, business_interests, assets]
-    produces: sanctions_country
-    # Stated rule, applied in order (DESIGN §3.1).
-    rules:
-      - when: business_interests.controlling_stake            # >= 25%
-        then: business_interests.country_of_operations
-      - when: assets.tier_hint in ["hnwi", "uhnwi"]
-        then: client.address_detail.country_of_legal_residency
-      - else_error: sanctions_jurisdiction_unresolved
-
-  - id: country_sanctions_check
-    executor: lookup
-    source: reference/sanctioned_countries.json
-    match: [sanctions_country]
-    produces: country_sanctions_result
-    on_hit: decline
-
-  - id: individual_sanctions_check
-    executor: lookup
-    source: reference/sanctioned_individuals.json
-    match: [client.name, client.address_detail.country]
-    produces: individual_sanctions_result
-    on_hit: decline
-
-  # -------------------------------------------------------------------------
-  # 5. Eligibility — pure arithmetic over thresholds. No agent.
-  # -------------------------------------------------------------------------
-  - id: load_financials
-    executor: data
-    source: data/client_financials.json
-    key: client_id
-    produces: financials
-
-  - id: load_assets
-    executor: data
-    source: data/client_assets.json
-    key: client_id
-    produces: assets
-
-  - id: compute_eligibility
-    executor: rules
-    inputs: [client, financials, assets]
+  - name: compute_eligibility
+    executor: local
     produces: eligibility
-    # Thresholds are data, not prose, so a change is reviewable as a diff.
-    tiers:
-      premium:
-        currency: EUR
-        # Residency is a gate; the financial test is any-of. See DESIGN §3.2 —
-        # this reading is FLAGGED and needs confirmation.
-        require_all:
-          - client.address_detail.country == "DE"
-          - client.address_detail.right_to_reside == true
-        require_any:
-          - financials.annual_income_eur >= 120000
-          - financials.savings_eur >= 100000
-      private_banking_hnwi:
-        currency: EUR
-        # Art and crypto excluded outright at this tier.
-        qualifying_assets: [investable, liquid]
-        excluded_asset_classes: [art, crypto]
-        minimum: 2000000
-      private_banking_uhnwi:
-        currency: EUR
-        qualifying_assets: [investable, liquid, art, crypto]
-        minimum: 10000000
-        # Art + crypto combined may not exceed half the portfolio; the excess is
-        # excluded and the tier recomputed on the reduced figure.
-        constraints:
-          - max_share:
-              classes: [art, crypto]
-              of_total: 0.50
-              on_breach: exclude_excess_and_recompute
+    kwargs: [client, client_id]
+    uses: kyc.compute_eligibility
+    summary_keys: [tier]
+    doc: threshold arithmetic over income, savings and assets
 
-  - id: art_provenance_gate
+  - name: art_gate
     executor: gate
-    when: assets.has_art
-    # Any art at all, at any tier. The attestation is the audit record.
-    payload:
-      - assets.art_items
-      - eligibility.proposed_tier
-    attestations:
-      - reviewed_by_art_historian
-      - full_provenance_established
-      - no_theft_or_forgery_claim
-    require_all_attestations: true
-    verdicts: [approve, reject, amend]
     produces: art_decision
-    on_reject: downgrade_tier
+    when: eligibility.has_art
+    kwargs: [client, eligibility]
+    doc: art needs an attestation — historian review, provenance, no theft claim
 
-  - id: emit_outcome
-    executor: assemble
-    inputs:
+  - name: emit_outcome
+    executor: local
+    produces: outcome
+    kwargs:
       - client
-      - adverse_media_findings
-      - pep_result
-      - pep_decision
-      - country_sanctions_result
-      - individual_sanctions_result
+      - adverse_media
+      - pep
+      - sanctions
       - eligibility
+      - pep_decision
       - art_decision
-    produces: onboarding_outcome
-    schema: schemas/onboarding-outcome.json
+    uses: kyc.emit_outcome
+    summary_keys: [client_id, tier]
+    doc: assemble the onboarding record
+
+# ── open questions for the parser ────────────────────────────────────────────
+#
+# 1. Where do `uses` names get registered? A project needs a module the loader
+#    imports for its side effects. `[paths] implementations = "steps"` in the
+#    manifest is the obvious answer and keeps registration explicit rather than
+#    magic. Note this means the *loader* imports project Python — fine in the
+#    CLI and the worker, and never in the API (DESIGN-WRK-001 §1).
+#
+# 2. What happens when a `uses` name is not registered? It must fail at **load**,
+#    naming the known implementations — the same treatment a missing hook gets
+#    today. A run that reaches step seven and only then cannot resolve it is the
+#    worst version of this.
+#
+# 3. JSON as well as YAML? The parser should take either. They are the same
+#    document model and refusing JSON buys nothing.
+#
+# 4. Does a YAML template compose with a Python one? Simplest first answer is
+#    no — a template is defined in one place or the other. Mixing is a feature
+#    nobody has asked for.
+#
+# 5. Prompts stay refs (`kyc-entities@1`), not inline text. Versioned prompt
+#    data already has a home and a second one would rot.
