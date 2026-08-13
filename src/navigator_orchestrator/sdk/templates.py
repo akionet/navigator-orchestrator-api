@@ -79,6 +79,15 @@ class Step:
     call: Any = None
     #: `service` steps only: which backend in `navigator-orchestrator.toml` to call.
     backend: str = ""
+    #: `gate` steps only: a dotted pool path deciding whether this gate is
+    #: *material* for this run. Empty means always pause. `"pep.is_pep"` pauses
+    #: only when that value is truthy.
+    #:
+    #: A string rather than a predicate, deliberately — the same reason `uses`
+    #: is a name: a step must stay expressible as data, so a YAML template is a
+    #: parser rather than a rewrite. It also keeps the condition reviewable in a
+    #: diff instead of buried in a lambda.
+    when: str = ""
     #: `validate` steps only: the configured runtime schema and pool input.
     schema: str = ""
     input: str = ""
@@ -116,6 +125,11 @@ class Step:
         if (self.schema or self.input) and self.executor != "validate":
             raise ValueError(
                 f"step {self.name!r} sets schema= or input= but is a {self.executor!r} step"
+            )
+        if self.when and self.executor != "gate":
+            raise ValueError(
+                f"step {self.name!r} sets when= but is a {self.executor!r} step; "
+                "a condition that skips real work is a branch, not a gate"
             )
         if self.output_schema and self.executor != "agent":
             raise ValueError(

@@ -331,6 +331,9 @@ kyc_onboarding = Template(
             name="pep_gate",
             executor="gate",
             produces="pep_decision",
+            # Only stop when there is something to decide. A reviewer confirming
+            # eight times a day that someone is *not* a PEP stops reading.
+            when="pep.is_pep",
             # These pool keys are what the reviewer is shown. The engine never
             # interprets them, which is why one CLI can review any workflow.
             kwargs=("client", "pep", "adverse_media"),
@@ -358,6 +361,9 @@ kyc_onboarding = Template(
             name="art_gate",
             executor="gate",
             produces="art_decision",
+            # Any art at all, at any tier — the attestation is about provenance,
+            # not about how much the portfolio is worth.
+            when="eligibility.has_art",
             kwargs=("client", "eligibility"),
             doc="art needs an attestation: historian review, provenance, no theft claim",
         ),

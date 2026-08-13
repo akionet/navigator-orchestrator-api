@@ -76,6 +76,46 @@ def gate_payload_of(step: Step, pool: Mapping[str, Any]) -> dict[str, Any]:
     }
 
 
+#: Distinguishes "the pool has no such path" from "the value there is falsy".
+#: Collapsing the two would make a typo in `when=` silently disable a gate.
+_UNRESOLVED = object()
+
+
+def _resolve_path(pool: Mapping[str, Any], path: str) -> Any:
+    """Walk a dotted pool path, or return `_UNRESOLVED`."""
+    current: Any = pool
+    for part in path.split("."):
+        if isinstance(current, Mapping) and part in current:
+            current = current[part]
+        else:
+            return _UNRESOLVED
+    return current
+
+
+def gate_is_required(step: Step, pool: Mapping[str, Any]) -> bool:
+    """Whether this gate is material for this run (`Step.when`).
+
+    A gate with no condition always pauses — the safe default, and the prior
+    behaviour. With a condition, the run stops only when the named value is
+    truthy, so a compliance officer is asked about the PEP match that exists
+    rather than confirming eight times a day that there isn't one.
+
+    **Fails closed.** A condition naming a path no step produced — a typo, a
+    renamed `produces`, a step that was removed — pauses rather than skips.
+    Skipping would silently drop a compliance control and leave a clean record
+    behind it, which is the worst of the available failure modes.
+
+    The skip is recorded as a decision either way, so "no human was asked" is a
+    fact in the audit trail rather than an absence in it.
+    """
+    if not step.when:
+        return True
+    value = _resolve_path(pool, step.when)
+    if value is _UNRESOLVED:
+        return True
+    return bool(value)
+
+
 def _merge_pool(left: dict[str, Any], right: dict[str, Any]) -> dict[str, Any]:
     """Later products are added; earlier ones survive."""
     return {**left, **right}
@@ -136,6 +176,26 @@ def _make_node(
         pool = dict(state.get("pool") or {})
 
         if step.executor == "gate":
+            if not gate_is_required(step, pool):
+                # Recorded, not silent: the audit trail says a human was not
+                # asked and why, which is a different fact from a gate that
+                # never existed.
+                return {
+                    "pool": {
+                        step.produces: {
+                            "verdict": "not_required",
+                            "reason": f"{step.when} is not set for this run",
+                        }
+                    },
+                    "steps": [
+                        {
+                            "step": step.name,
+                            "executor": step.executor,
+                            "source": "engine",
+                            "produced": step.produces,
+                        }
+                    ],
+                }
             # Everything before this is already checkpointed, so the process may
             # now exit. `interrupt` is what makes that safe.
             #
