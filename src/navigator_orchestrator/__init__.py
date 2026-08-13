@@ -58,6 +58,7 @@ from navigator_orchestrator.sdk.schema import (
 from navigator_orchestrator.sdk.service import Call, CallSpecError, ServiceFailed
 from navigator_orchestrator.sdk.templates import (
     Executor,
+    Param,
     Step,
     Template,
     TemplateRegistry,
@@ -76,6 +77,7 @@ __all__ = [
     "FileAccess",
     "Judge",
     "JudgeError",
+    "Param",
     "Project",
     "ProjectError",
     "Requirement",

@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Onboarding outcome",
+  "description": "The published record of one screening. The output edge: structured so a console can render it, and deliberately flat.",
+  "type": "object",
+  "required": ["client_id", "name", "tier"],
+  "properties": {
+    "client_id": { "type": "string", "title": "Client" },
+    "name": { "type": "string", "title": "Name" },
+    "tier": {
+      "type": "string",
+      "title": "Eligibility tier",
+      "enum": ["premium", "private_banking_hnwi", "private_banking_uhnwi", "ineligible"]
+    },
+    "adverse_media_implicating": {
+      "type": "integer",
+      "title": "Adverse articles implicating the subject",
+      "description": "Articles naming the subject where a role of principal or associate was found. Excludes representative, witness, victim, investigator, commentator and namesake."
+    },
+    "adverse_media_reviewed": {
+      "type": "integer",
+      "title": "Adverse articles reviewed"
+    },
+    "is_pep": { "type": "boolean", "title": "Politically exposed" },
+    "sanctions_country": {
+      "type": "string",
+      "title": "Sanctions jurisdiction",
+      "description": "ISO country code the screening applied."
+    },
+    "sanctions_basis": {
+      "type": "string",
+      "title": "Why that jurisdiction",
+      "description": "Controlling stake in a named business, or legal residency. The rules are ordered and this records which one decided."
+    },
+    "decisions": {
+      "type": "object",
+      "title": "Human decisions",
+      "description": "One entry per gate. A gate that was not material records verdict 'not_required' with a reason, because no human being asked is a different fact from there being no gate.",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "verdict": { "type": "string" },
+          "actor": { "type": "string" },
+          "comment": { "type": "string" },
+          "reason": { "type": "string" },
+          "at": { "type": "string", "format": "date-time" }
+        }
+      }
+    }
+  }
+}

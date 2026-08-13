@@ -55,5 +55,7 @@ revise:             ## Send back for revision: make revise run=<id> [why="..."]
 	@test -n "$(run)" || (echo 'usage: make revise run=<id> [why="need provenance"]'; exit 2)
 	@$(NAV) decide $(FLOW) $(run) --revise $(if $(why),--comment "$(why)",)
 
-clean:              ## Discard local run history
-	@rm -rf .runs && echo "run history cleared"
+# Both the run log and the checkpoints live here. Removing only the logs would
+# leave paused runs resumable with no record of them, which is worse than either.
+clean:              ## Discard local run history and checkpoints
+	@rm -rf .navigator-orchestrator && echo "run history cleared"

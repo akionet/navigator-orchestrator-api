@@ -64,11 +64,21 @@ This is the piece that makes the console generic rather than aware of KYC.
 `WorkflowSummary` already has this shape — it gains a source and loses the
 assumption that the registry holds classes.
 
-**`Template.params` is currently a tuple of names with no types.** Producing a
-real JSON Schema means either annotating params or deriving from hook
-signatures. Cheapest honest first cut: emit `{"type": "object", "properties":
-{p: {} for p in params}, "required": [...]}`, and note in the console that the
-schema is names-only. Better typing is its own change.
+**Resolved.** `Template.params` now accepts `Param(name, type, required, doc,
+default)` and `Template.input_schema()` derives real JSON Schema from it, so a
+descriptor publishes the same grade of schema as `echo` and `approval`. A bare
+string is still shorthand for a required string, so typing is opt-in per
+parameter and no existing template broke.
+
+`Template.publishes` and `result_schema` do the same for the other edge: which
+pool key is the result, and a ref to its shape in `[schemas.*]`. Both optional.
+
+What is deliberately still untyped is everything **between** the steps. Rigid
+structure between agentic nodes is self-defeating — the useful outputs are
+frequently the ones no schema anticipated — so the descriptor describes the two
+edges and says nothing about the pool. `tests/test_param_schema.py` asserts that
+no schema field appears on the general step contract, which turns the principle
+into a build failure rather than a convention.
 
 ### 3.2 A queue the API can write and a worker can claim
 
