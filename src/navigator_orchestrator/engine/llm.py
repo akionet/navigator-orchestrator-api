@@ -10,7 +10,7 @@ port a config change rather than a rewrite.
 | `vertex:`             | `google_vertexai`   | Gemini on Vertex AI      | UAT (GCP)    |
 | `bedrock:`            | `bedrock_converse`  | Claude on Amazon Bedrock | golive (AWS) |
 | `anthropic:`          | `anthropic`         | Claude, first-party API  | escape hatch |
-| `fake:`               | —                   | deterministic, offline   | every test   |
+| `fake:`               | —                   | deterministic, offline   | **the default** |
 
 LangChain owns the per-provider adapters, request translation and usage
 normalisation. We own the prefix vocabulary and the `Policy` → standard-params

@@ -15,11 +15,14 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 __all__ = ["DEFAULT_MODEL", "Effort", "Policy", "with_overrides"]
 
-# Claude on Bedrock is the *golive* default (SPEC-AIP-002 §3.3). Bedrock model
-# ids carry the `anthropic.` vendor prefix; the `bedrock:` scheme in front of
-# it is ours. UAT runs on GCP and overrides this with a `vertex:` Gemini model
-# via `NAVIGATOR_MODEL` — see `.env.example`.
-DEFAULT_MODEL = "bedrock:anthropic.claude-opus-5"
+# The offline stub is the default, deliberately. A fresh clone that someone runs
+# before reading anything must not be able to spend money or require a cloud
+# account — reaching a paid provider is an explicit choice, made by setting
+# `NAVIGATOR_MODEL` (see `.env.example` and `docs/providers.md`).
+#
+# This is the *only* line in the engine that expresses a provider preference.
+# Everything else is a `<provider>:<model-id>` string supplied by config.
+DEFAULT_MODEL = "fake:local"
 
 Effort = Literal["low", "medium", "high", "xhigh", "max"]
 

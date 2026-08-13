@@ -8,12 +8,19 @@ from pydantic import ValidationError
 from navigator_orchestrator.engine.policy import DEFAULT_MODEL, Policy, with_overrides
 
 
-def test_default_is_claude_on_bedrock() -> None:
-    """SPEC-AIP-002 §3.3: `bedrock:` Claude is the golive default."""
+def test_the_default_model_cannot_reach_a_paid_provider() -> None:
+    """A fresh clone must not be able to spend money before anyone configures it.
+
+    Asserted rather than left to the comment on `DEFAULT_MODEL`: this is the
+    difference between an accidental `uv run` and an unexpected cloud bill, and
+    it is exactly the kind of default that gets "temporarily" changed.
+    """
     policy = Policy()
     assert policy.model == DEFAULT_MODEL
-    assert policy.provider == "bedrock"
-    assert policy.model_id.startswith("anthropic.claude-")
+    assert policy.provider == "fake", (
+        f"the built-in default resolves to {policy.provider!r}, which bills someone; "
+        "a real provider must be an explicit NAVIGATOR_MODEL choice"
+    )
 
 
 def test_uat_model_is_a_pure_config_change() -> None:
