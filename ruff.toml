@@ -37,9 +37,9 @@ ignore = [
 # project has a supported way to build a client without the ban being
 # weakened where it matters most.
 "src/navigator_orchestrator/sdk/composition.py" = ["TID251"]
-# An operator-facing script in a workflow project: it writes to a terminal
-# and that is the whole point of it.
-"editorial/eval_judge.py" = ["T20"]
+# Operator-facing scripts in a workflow project: they write to a terminal, and
+# that is the whole point of them.
+"workflows/*/demo_*.py" = ["T20"]
 # Workflow files are authored by users, to a documented convention. They are
 # shipped as executable documentation, not as library code.
 "examples/**" = ["T20", "PLR2004"]
