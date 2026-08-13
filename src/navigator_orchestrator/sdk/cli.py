@@ -161,6 +161,24 @@ def _cmd_check(args: argparse.Namespace, registry: TemplateRegistry) -> int:
     return 0
 
 
+def _project_prompts(project: Project | None) -> Path | None:
+    """A project's own `[paths] prompts`, when it has one.
+
+    Without this the manifest declared a prompts directory that nothing read, so
+    a project could ship a template referencing its own prompt and the run would
+    fail validation against the engine's built-in set. `None` falls back to the
+    built-ins, which is what a project with no prompts of its own wants.
+
+    A project directory *replaces* the built-ins rather than extending them: a
+    template that mixes its own prompts with `doc-qa@1` is not expressible yet.
+    Merging registries is the real fix and belongs with the prompt registry.
+    """
+    if project is None:
+        return None
+    directory = project.paths.get("prompts")
+    return directory if directory is not None and directory.is_dir() else None
+
+
 def _cmd_run(args: argparse.Namespace, registry: TemplateRegistry, extras: Sequence[str]) -> int:
     project = _project_for(args.file, registry)
     parsed, template = _load_and_check(args.file, registry, project)
@@ -169,7 +187,7 @@ def _cmd_run(args: argparse.Namespace, registry: TemplateRegistry, extras: Seque
     # without copying the file to change it.
     params = {**(_load_params_file(args.params) if args.params else {}), **_parse_params(extras)}
 
-    deps = build_deps()
+    deps = build_deps(prompts_dir=_project_prompts(project))
     deps.prompts.validate_all(template.prompt_refs) if deps.prompts else None
 
     # `--dir` **is** the workflow's world, so it becomes the root that hooks are
@@ -337,7 +355,7 @@ def _cmd_decide(args: argparse.Namespace, registry: TemplateRegistry) -> int:
         "at": datetime.now(UTC).isoformat(timespec="seconds"),
     }
 
-    deps = build_deps()
+    deps = build_deps(prompts_dir=_project_prompts(project))
     root = Path(args.dir or Path.cwd()).expanduser()
     ctx = Ctx(params={}, deps=deps, files=FileAccess(root=root), project=project)
     events = FileEventLog(root=_runs_dir())

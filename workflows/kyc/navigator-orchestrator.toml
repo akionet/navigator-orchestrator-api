@@ -11,7 +11,7 @@
 
 [paths]
 flows     = "flows"      # workflow definitions: what runs, in what order
-judges    = "judges"     # agent configurations, declared not coded
+# judges  = "judges"     # single-hop compliance gates, if the project needs any
 prompts   = "prompts"    # versioned prompt text (this example inlines its prompts)
 templates = "templates"  # reusable step shapes, if the project needs any
 
