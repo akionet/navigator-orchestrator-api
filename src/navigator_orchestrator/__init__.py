@@ -40,6 +40,7 @@ from navigator_orchestrator.sdk.run import (
     RunOutcome,
     arun_workflow,
     ids_from_file,
+    outcomes_by_status,
     run_batch,
     run_workflow,
 )
@@ -103,6 +104,7 @@ __all__ = [
     "load_judges",
     "load_project",
     "make_schema_snapshot",
+    "outcomes_by_status",
     "register_implementation",
     "resume_template_graph",
     "run_batch",

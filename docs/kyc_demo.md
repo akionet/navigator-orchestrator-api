@@ -27,41 +27,58 @@ cd workflows/kyc          # every command below runs from here
 
 ## 1. Python — embed a run in your own code
 
-```bash
-uv run --project ../.. python demo_python.py CL-0001
+Four calls are the whole API. Workflows are named, not pathed:
+
+```python
+from navigator_orchestrator import ids_from_file, outcomes_by_status, run_batch, run_workflow
+
+outcome = run_workflow("kyc-onboarding", project_dir=HERE, client_id="CL-0001")
+outcome.status        # completed | paused | declined | failed
+outcome.run_id        # always present — the handle for resuming
+outcome.output        # the screening record, when it completed
 ```
 
-```
-CL-0001  Anneliese Vogt
-  tier             : premium
-  PEP              : False
-  sanctions country: DE (legal residency)
-  adverse media    : 0 implicating
-  pep_gate         : {'verdict': 'not_required', 'reason': 'pep.is_pep is not set for this run'}
-  art_gate         : {'verdict': 'not_required', 'reason': 'eligibility.has_art is not set for this run'}
-```
-
-`demo_python.py` is ~40 lines and uses only public API. This is the mode for a
-service, a notebook or a batch job — the CLI is a thin wrapper over it.
-
-**One trap worth knowing:** use `run_template_graph`, **not** `run_template`. The
-sequential runner has nothing to interrupt, so it treats a gate as a step needing
-a hook and fails with `required hook is not implemented`. Any workflow with a
-gate needs the graph runner, which is also what gives it a checkpointer.
+`demo_python.py` wraps that in a CLI:
 
 ```bash
-uv run --project ../.. python demo_python.py CL-0004
-# paused at pep_gate: a PEP match is a decision a compliance officer owns, not a rejection
+uv run --project ../.. python demo_python.py CL-0001 CL-0004 CL-0005 CL-0007 CL-0008
+```
+```
+CL-0001  completed
+    tier: premium
+CL-0004  paused     pep_gate
+CL-0005  paused     art_gate
+CL-0007  failed     client CL-0007 has no country on its address; ...
+CL-0008  declined   sanctions screening declines this client: IR is COMPREHENSIVE
+
+{'completed': 1, 'paused': 2, 'failed': 1, 'declined': 1}
 ```
 
-Resuming across processes is the CLI's job — see below.
+Or from a file, one id per line:
 
-> **Known rough edge.** `demo_python.py` hardcodes its parameter names and is
-> more verbose than it should be. It is kept as a worked example of the public
-> API, not as the interface. A proper `run_workflow(name, **params)` helper —
-> taking a workflow name rather than a file path, and accepting one id, a list
-> or a file — belongs in the SDK and is not written yet. Until it is, batching
-> lives in the Makefile (`make batch`) rather than in Python.
+```bash
+uv run --project ../.. python demo_python.py --file ids.example.txt
+```
+
+### The two design points worth narrating
+
+**A pause is a return value, not an exception.** Gates mean a run legitimately
+may not complete, so raising would put the *normal* case in a `try/except` at
+every call site. Airflow models this as a DAG-run state and Temporal as a
+workflow blocked on a signal; `RunOutcome.status` is the same idea.
+
+**`declined` is not `failed`.** CL-0007 has no country on its address — a data
+error someone must fix. CL-0008 is a sanctions decline — the control *working*.
+Both used to raise `Blocked` and were indistinguishable, which would make
+"declined 40 clients this week" look identical to "40 crashes" to anything
+watching. `ctx.decline()` now separates them.
+
+A batch keeps going through both: one decline does not stop the rest.
+
+See [`DESIGN-RUN-001`](DESIGN-RUN-001-embedding-a-run.md) for the reasoning, and
+why `start_workflow` is deliberately absent until the worker exists.
+
+Resuming across processes is still the CLI's job — see below.
 
 ---
 
