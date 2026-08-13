@@ -82,7 +82,7 @@ be closed before the SDK is described as production-ready. Everything else in
 **The KYC reference workflow is design, not running code.** `workflows/kyc/`
 holds a flow definition, two agent configurations and synthetic fixtures. The
 YAML has not been validated against `sdk/loader.py`; expect field-name drift on
-first load. See `docs/DESIGN-KYC-001-client-onboarding.md`, which also lists the
+first load. See `workflows/kyc/DESIGN.md`, which also lists the
 open questions — notably an ambiguity in the Premium eligibility rule that needs
 a decision before it is implemented.
 
@@ -96,7 +96,7 @@ reviewed before publication.
 | `ruff check` | ✅ | — |
 | `ruff format --check` | ✅ 107 files | — |
 | `mypy` | ✅ 56 source files | — |
-| `pytest` | ✅ **428 passed, 4 skipped** | — |
+| `pytest` | ✅ **432 passed, 4 skipped** | — |
 | `tsc --noEmit` | — | ✅ |
 | `eslint` | — | ✅ |
 | unit tests | — | ✅ **27 passed** |

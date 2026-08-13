@@ -34,13 +34,26 @@ Two principles do most of the work:
   and the judgement is genuinely open. Everything else is a rule, because a rule
   is reviewable as a diff and does not vary between runs.
 
+## Workflows are definitions, not engine code
+
+`src/navigator_orchestrator/` is the engine. `workflows/` holds definitions, and
+the engine never reads that directory — it is handed a project via a manifest.
+Both halves of that boundary are asserted rather than documented:
+`tests/test_sdk_isolation.py` AST-scans imports, and
+`tests/test_example_workflow_is_removable.py` fails if engine, test or CI code
+learns a workflow's name.
+
+**Start your own project by deleting the sample** — see
+[`workflows/README.md`](workflows/README.md) for the extension model, including
+how to inject plain Python functions as steps when no generic engine step fits.
+
 ## Reference workflow: KYC client onboarding
 
 Client onboarding screening — adverse media, PEP, sanctions and eligibility
 tiering. It was chosen because it is honest about the split above: eight
 deterministic steps, two agents, two human gates.
 
-- [`docs/DESIGN-KYC-001-client-onboarding.md`](docs/DESIGN-KYC-001-client-onboarding.md) — the design, the rules, and why each step is the kind it is
+- [`workflows/kyc/DESIGN.md`](workflows/kyc/DESIGN.md) — the design, the rules, and why each step is the kind it is
 - [`workflows/kyc/flows/kyc-onboarding.yaml`](workflows/kyc/flows/kyc-onboarding.yaml) — the workflow
 - [`workflows/kyc/judges/`](workflows/kyc/judges/) — the two agent configurations
 - [`workflows/kyc/data/README.md`](workflows/kyc/data/README.md) — the fixture matrix

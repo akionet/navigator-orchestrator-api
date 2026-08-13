@@ -1,0 +1,36 @@
+# The workflow project manifest.
+#
+# A workflow project is *a directory with this file in it* — not a Python
+# package. The CLI finds it by walking up from wherever you run it, the way git
+# finds `.git`. Adding a judge means adding a file; there is no install step and
+# no reinstall after an edit.
+#
+# This is the file that makes `workflows/kyc/` a project rather than a folder of
+# examples. Copy this directory, change the paths and backends, and you have your
+# own workflow — see ../README.md.
+
+[paths]
+flows     = "flows"      # workflow definitions: what runs, in what order
+judges    = "judges"     # agent configurations, declared not coded
+prompts   = "prompts"    # versioned prompt text (this example inlines its prompts)
+templates = "templates"  # reusable step shapes, if the project needs any
+
+# Backends this project may call. Declared here so a step can name one and a
+# reviewer can see every external system the workflow touches in one place.
+#
+# No secrets. `token_env` names environment variables — first one *set* wins —
+# and the value lives in the environment, never in a file git can see.
+#
+# The KYC example is fully offline: it reads the JSON fixtures under `data/` and
+# `reference/` and calls nothing. This block is here to show the shape a real
+# project needs, and is commented out so the example stays hermetic.
+
+# [backends.client-service]
+# base_url  = "${CLIENT_API_URL:-https://api.example.com}"
+# token_env = ["CLIENT_SERVICE_TOKEN"]
+# timeout   = 30.0
+
+# [backends.sanctions-feed]
+# base_url  = "${SANCTIONS_API_URL:-https://api.example.com}"
+# token_env = ["SANCTIONS_FEED_TOKEN"]
+# timeout   = 15.0
